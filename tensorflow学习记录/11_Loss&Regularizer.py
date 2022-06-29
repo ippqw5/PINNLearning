@@ -47,7 +47,7 @@ model.add(layers.Dense(10,
         kernel_regularizer=regularizers.l1_l2(0.01,0.01),activation = "sigmoid"))
 
 model.compile(optimizer = "rmsprop",
-        loss = "binary_crossentropy",metrics = ["AUC"])
+        loss = FocalLoss(gamma=2.0,alpha=0.1),metrics = ["AUC"])
 #"focal_loss"
 #"binary_crossentropy"
 #FocalLoss

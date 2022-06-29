@@ -172,8 +172,8 @@ def train_loop(model,feature,label):
     #梯度下降法更新梯度
     w.assign_sub(0.01 * dloss_dw)
     b.assign_sub(0.01 * dloss_db)
-    
     return loss
+
 def train_model(model,epochs):
     for epoch in tf.range(0,epochs+1):
         for (features,labels) in data_iter(X,Y,10):

@@ -31,9 +31,41 @@ nonlinear partial differential equations](https://github.com/maziarraissi/PINNs)
 利用暑假研究一下如下问题： 
 
 - PINN模型在耦合问题上的应用（这方面的研究似乎还不多），
-
 - PINN正负问题求解（看了一些文章说PINN的优势其实在于 **高维问题 & 反问题求解**
 - 代码实现若干算例（也许可能maybe Only one😁），最好能把模型应用到3维。
+
+
+
+### PINN模型搭建
+
+先设想一个代码框架。
+
+PINN的模型比较简单，如果先不考虑loss函数，那么PINN就是一个普通的全连接序列模型，可以用 **tf.keras.Sequential()**构建。
+
+假设Layer = [inputs,n1,n2,...nk,n_outputs]，从左至右代表每层神经元的个数。
+
+```python
+def createModel(layer):
+    if len(layer) < 2:
+        print("层数小于2！, 无法构建神经网络")
+        return 
+    model = keras.Sequential(name = "PINN")
+    model.add(keras.Input(shape=(layer[0],)))
+    for i in range(1,len(layer)-1):
+        model.add(layers.Dense(layer[i], activation="relu", name="layer{}".format(i)))
+    model.add(layers.Dense(layer[-1], name="outputs"))
+    
+    #  model.compile( loss= , metrics = [], optimizer= )
+    #	...
+    #
+    #
+    
+    return model
+```
+
+
+
+#### <font color='purple'>后续要为 model 添加 loss（PINN主要部分）、metric（可以不要）、optimizer（优化器，必要）</font>
 
 > 以上内容于 2022 -  06 - 29  markdown。
 
