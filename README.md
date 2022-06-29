@@ -1,8 +1,8 @@
 <!-- #region -->
-# TensorflowLearning
+# 学习PINNs and TensorFlow 
 
 
-记录每日 TensorFlow 学习 
+记录每日 TensorFlow 学习 & PINN 模型学习
 > 参考教材：**《30天吃掉那只TensorFlow2》** https://github.com/lyhue1991/eat_tensorflow2_in_30_days
 
 
