@@ -132,25 +132,23 @@ mylayer(tf.range(5,dtype=tf.float32))
 # Layer的子类化一般需要重新实现初始化方法，Build方法和Call方法。下面是一个简化的线性层的范例，类似Dense.
 
 # %%
-class Linear(layers.Layer): #Layer is the class from which all layers inherit.
-    def __init__(self, units=32, **kwargs):
+class Linear(layers.Layer):
+    def __init__(self, units=1, **kwargs):
         super(Linear, self).__init__(**kwargs)
         self.units = units
     
-    #重载build方法，根据inputs 确定训练参数
-    def build(self, input_shape):
-        self.w = self.add_weight("w", shape=(input_shape[-1], self.units) ,
-                                initializer = 'random_normal', 
-                                trainable = True) # 必须要有名称"w"，否则报错
-        self.b = self.add_weight("b",shape = (self.units,),
-                                initializer = 'random_normal',
-                                trainable = True)
+    #build方法一般定义Layer需要被训练的参数。    
+    def build(self, input_shape): 
+        print(input_shape[-1])
+        self.w = self.add_weight("w",shape=(self.units,input_shape[-1]),
+                                 initializer="ones",
+                                 trainable=True) #注意必须要有参数名称"w",否则会报错
         super(Linear,self).build(input_shape) # 相当于设置self.built = True
-    
+
     #call方法一般定义正向传播运算逻辑，__call__方法调用了它。  
     @tf.function
-    def call(self,inputs):
-        return tf.matmul(inputs,self.w) + self.b
+    def call(self, inputs): 
+        return tf.multiply(inputs,self.w)
     
     #如果要让自定义的Layer通过Functional API 组合成模型时可以被保存成h5模型，需要自定义get_config方法。
     def get_config(self):  
