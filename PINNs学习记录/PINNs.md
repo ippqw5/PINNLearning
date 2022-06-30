@@ -106,7 +106,7 @@ def fit(self,X_train,Y_train,epoches,batch_size,**kwargs):
     #
     #		主要的训练部分代码
     #
-	for epoch in epoches: ## 使用 X_train,Y_train 进行 epoch 次训练
+    for epoch in epoches: ## 使用 X_train,Y_train 进行 epoch 次训练
         for x_batch,y_batch in dataset(X_train,Y_train,batch_size): ## dataset(X_train,Y_train,batch_size) 数据分组
             train_step((x_batch,y_batch))  ## train_step(self,data) 是 类中的方法，可以重载，从而改变fit()
 
