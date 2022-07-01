@@ -328,9 +328,7 @@ def function_factory(model, loss, X_u_train,u_train,X_f_train):
     """A factory to create a function required by tfp.optimizer.lbfgs_minimize.
     Args:
         model [in]: an instance of `tf.keras.Model` or its subclasses.
-        loss [in]: a function with signature loss_value = loss(pred_y, true_y).
-        train_x [in]: the input part of training data.
-        train_y [in]: the output part of training data.
+        loss [in]: a loss function in model
     Returns:
         A function that has a signature of:
             loss_value, gradients = f(model_parameters).
