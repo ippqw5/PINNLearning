@@ -146,11 +146,15 @@ loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 
 
 
+
+
 这也是为什么官方文档、网上的帖子说：
 
 **如果想自定义loss，那么你自定义的loss函数一定要有两个输入参数（y，y_pred)。**
 
 **因为在 fit() ——》train_step()中，调用了self.compiled_loss()，并规定了它的参入参数为（y,y_pred)**。
+
+
 
 
 
@@ -260,6 +264,8 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
 
 tf.keras.optimizers为我们提供了许多现成的优化器，比如SGD（最速下降）、Adam、RMSprop等等。
 
+
+
 假设，现有模型对象 MyPinn。
 
 可以通过 tf.keras.optimizers.Optimizer() 创建优化器对象。例如， MyPinn.optimizer = tf.keras.optimizers.SGD()
@@ -300,6 +306,8 @@ L-BFGS 是 秩2的拟牛顿方法(这学期 “最优化方法” 课上刚好�
 
 
 
+
+
 然而在TensorFlow1.x中 并没有内置的 L-BFGS，作者实际是使用tensoflow1.x 提供的一个接口，使用 Scipy 库中的 L-BFGS。
 
 Scipy中调用L-BFGS的格式是：
@@ -335,8 +343,6 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
                                                                    'ftol' : 1.0 * np.finfo(float).eps})
 ```
 
-
-
 这时如果我们写 self.optimizer.minimize() 实际上就会调用 scipy.optimize.minimize( args ) ，args=上述代码中传入的参数，self.loss 相当于 fun。
 
 
@@ -347,7 +353,7 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
 
 无非就是按照scipy.optimize.miminze()的调用格式，在MyPinn内部定义一个loss_fun(x) ，x is 1-D array with shape = (n,)，
 
-作为scipy.optimize.miminze(fun,...)中的fun，但这意味着需要把MyPinn的weights和bias "扁平化" 放在一个1维数组中，在优化完毕后，还要把结果再变成原来的形状，放回MyPinn里。。。感觉有点麻烦。
+作为scipy.optimize.miminze(fun,...)中的fun，但这意味着需要把MyPinn的weights和bias "扁平化" 放在一个1维数组中，在优化完毕后，还要把结果再变成原来的形状，放回MyPinn里。
 
 
 
@@ -371,8 +377,65 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
 
 [Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
 
-注意如果想使用tfp的L-BFGS也是要求输入变量是1-D的。而我们的PiNN模型中的weights和bias都是以多维的形式保存，所以要先将它们进行“扁平化”，再传入L-BFGS函数中。（正在学习。。。）
+注意如果想使用tfp的L-BFGS也是要求输入变量是1-D的。而我们的PiNN模型中的weights和bias都是以多维的形式保存，所以要先将它们进行“扁平化”，再传入L-BFGS函数中。
 
 上面的链接讨论了如何将model中的变量“扁平化”。
+
+
+
+我们看下tfp中L-BFGS的调用格式：
+
+```python
+tfp.optimizer.lbfgs_minimize(
+    value_and_gradients_function,
+    initial_position,
+    num_correction_pairs=10,
+    tolerance=1e-08,
+    x_tolerance=0,
+    f_relative_tolerance=0,
+    initial_inverse_hessian_estimate=None,
+    max_iterations=50,
+    parallel_iterations=1,
+    stopping_condition=None,
+    name=None
+)
+# value_and_gradients_function 是一个函数, 
+# Input: paramters with shape = 1-D ; Output: loss and gradients with paramters, gradients are also 1-D.
+
+# initial_position: initial paramters 
+```
+
+<font color='purple' >**对MyPinn模型(keras.Sequential模型)使用tfp L-BFGS()进行参数优化流程如下：** </font>
+
+1. 提取MyPinn中的weights 和 bias (即需要优化的parameters)，此时它们就是initial_position(未扁平化)。
+
+2. 创建两个列表 idx=[],part=[]
+
+3. 把MyPinn每层参数的shape等若干信息，用循环append到idx和part。
+
+   idx帮助我们调用 tf.dynamic_stitch()将weights和bias"扁平化"成params_1d。
+
+   part帮助我们params_1d变回weights和bias,并更新MyPinn中的参数。
+
+4. 定义一个func函数,func(params_1d)
+
+​		Input:  params_1d
+
+​		Output: loss , gradients
+
+​		Inside：先把 params_1d 转变回 MyPinn 中 weights,bias 的shape，并更新它们。
+
+​					  使用MyPinn中已定义的loss_Total()方法计算loss 和 gradients。
+
+​				      注意：需要将 gradients 也扁平化 再return。( gradients.shape = [weights,bias].shape,故也可以用idx扁平化 )
+
+5.  将第一步提取出来的weights 和 bias 扁平化处理，作为initial_position
+6. tfp.optimizer.lbfgs_minimize(func,initial_position)即可！
+
+
+
+
+
+
 
 > 以上内容截止至 7-1 markdown

@@ -226,11 +226,11 @@ import tensorflow_probability as tfp
 import numpy as np
 
 
-def createModel(layer,X_u_train,u_train,X_f_train):
+def createModel(layer,Model):
     if len(layer) < 2:
         print("层数小于2！, 无法构建神经网络")
         return 
-    model = MyPinn(X_u_train,u_train,X_f_train,name = "PINN")
+    model = Model(name = "PINN")
     model.add(keras.Input(shape=(layer[0],)))
     for i in range(1,len(layer)-1):
         model.add(layers.Dense(layer[i], activation="relu", name="layer{}".format(i)))
@@ -239,18 +239,15 @@ def createModel(layer,X_u_train,u_train,X_f_train):
 
 
 class MyPinn(keras.Sequential): ## 正在编写
-    def __init__(self,X_u_train,u_train,X_f_train,name = None):
+    def __init__(self,name = None):
         
         super(MyPinn, self).__init__(name=name)
         self.nu = tf.constant(0.01/np.pi)
-        self.X_u_train = X_u_train
-        self.u_train = u_train
-        self.X_f_train = X_f_train
-        self.optimizer = keras.optimizers.Adam()
+    
     @tf.function
-    def test_gradient(self):
-        x = self.X_f_train[:,0]
-        t = self.X_f_train[:,1]
+    def test_gradient(self,X_f_train):
+        x = X_f_train[:,0]
+        t = X_f_train[:,1]
         with tf.GradientTape() as tape:
             tape.watch([x,t])
             X = tf.stack([x,t],axis=-1)
@@ -259,16 +256,16 @@ class MyPinn(keras.Sequential): ## 正在编写
         tf.print(u_x)
     
     @tf.function
-    def loss_U(self):
-        u_pred = self(self.X_u_train)
-        loss_u = tf.reduce_mean(tf.square(self.u_train - u_pred))
+    def loss_U(self,X_u_train,u_train):
+        u_pred = self(X_u_train)
+        loss_u = tf.reduce_mean(tf.square(u_train - u_pred))
         return loss_u
     
     
     @tf.function
-    def loss_PDE(self):
-        x = self.X_f_train[:,0]
-        t = self.X_f_train[:,1]
+    def loss_PDE(self,X_f_train):
+        x = X_f_train[:,0]
+        t = X_f_train[:,1]
         with tf.GradientTape(persistent=True) as tape:
             tape.watch([x,t])
             X = tf.stack([x,t],axis=-1)
@@ -280,25 +277,25 @@ class MyPinn(keras.Sequential): ## 正在编写
         
         del tape
         
-        f = u_t + (self(self.X_f_train))*(u_x) - (self.nu)*u_xx
+        f = u_t + (self(X_f_train))*(u_x) - (self.nu)*u_xx
 
         loss_f = tf.reduce_mean(tf.square(f))
 
         return loss_f
     
     
-    def loss_Total(self):
-        loss_u = self.loss_U()
-        loss_f = self.loss_PDE()
+    def loss_Total(self,X_u_train,u_train,X_f_train):
+        loss_u = self.loss_U(X_u_train,u_train)
+        loss_f = self.loss_PDE(X_f_train)
         
         loss_total = loss_u + loss_f
         
         return loss_total
     
     @tf.function
-    def train_step(self):
+    def train_step(self,X_u_train,u_train,X_f_train):
         with tf.GradientTape(persistent=True) as tape:
-            loss_total = self.loss_Total()
+            loss_total = self.loss_Total(X_u_train,u_train,X_f_train)
                    
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss_total, trainable_vars)
@@ -308,70 +305,114 @@ class MyPinn(keras.Sequential): ## 正在编写
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         return loss_total
     
-    def train_model(self,epochs=100):
+    def train_model(self, X_u_train,u_train,X_f_train, epochs=100):
         for epoch in tf.range(1,epochs+1):
-            loss_total = self.train_step()
+            loss_total = self.train_step(X_u_train,u_train,X_f_train)
             if epoch % 10 == 0:                
                 print(
                     "Training loss (for per 10 epoches) at epoch %d: %.4f"
                     % (epoch, float(loss_total))
                 )
-    
-    ### 尝试使用tfp L-BFGS 优化器，正在编写中。。。未完待续。。。
-    @tf.function
-    def loss_and_gradients_function(self,trainable_variables):
-        with tf.GradientTape(persistent=True) as tape:
-            loss_total = self.loss_Total()   
-        gradients = tape.gradient(loss_total,trainable_variables)
-        
-        del tape
-        
-        return loss_total,gradients
-    def train_by_LBFGS(self):   
-        optim_result = tfp.optimizer.lbfgs_minimize(
-                      self.loss_and_gradients_function,
-                      initial_position=self.trainable_variables,
-                      tolerance=1e-8)
-
-        return optim_result
 
 X_u_train = tf.random.normal([1000,2])
 u_train = tf.random.normal([1000,1])
 X_f_train = tf.random.normal([1000,2])
 
 layer = [2,20,20,1]
-m1= createModel(layer,X_u_train,u_train,X_f_train)
+m1= createModel(layer,MyPinn)
+m1.compile(keras.optimizers.Adam())
+m1.train_model(X_u_train,u_train,X_f_train)
 
-m1.train_by_LBFGS()
+
+def function_factory(model, loss, X_u_train,u_train,X_f_train):
+    """A factory to create a function required by tfp.optimizer.lbfgs_minimize.
+    Args:
+        model [in]: an instance of `tf.keras.Model` or its subclasses.
+        loss [in]: a function with signature loss_value = loss(pred_y, true_y).
+        train_x [in]: the input part of training data.
+        train_y [in]: the output part of training data.
+    Returns:
+        A function that has a signature of:
+            loss_value, gradients = f(model_parameters).
+    """
+
+    # obtain the shapes of all trainable parameters in the model
+    shapes = tf.shape_n(model.trainable_variables)
+    n_tensors = len(shapes)
+
+    # we'll use tf.dynamic_stitch and tf.dynamic_partition later, so we need to
+    # prepare required information first
+    count = 0
+    idx = [] # stitch indices
+    part = [] # partition indices
+
+    for i, shape in enumerate(shapes):
+        n = np.product(shape)
+        idx.append(tf.reshape(tf.range(count, count+n, dtype=tf.int32), shape))
+        part.extend([i]*n)
+        count += n
+
+    part = tf.constant(part)
+
+    @tf.function
+    def assign_new_model_parameters(params_1d):
+        """A function updating the model's parameters with a 1D tf.Tensor.
+        Args:
+            params_1d [in]: a 1D tf.Tensor representing the model's trainable parameters.
+        """
+
+        params = tf.dynamic_partition(params_1d, part, n_tensors)
+        for i, (shape, param) in enumerate(zip(shapes, params)):
+            model.trainable_variables[i].assign(tf.reshape(param, shape))
+
+    # now create a function that will be returned by this factory
+    @tf.function
+    def f(params_1d):
+        """A function that can be used by tfp.optimizer.lbfgs_minimize.
+        This function is created by function_factory.
+        Args:
+           params_1d [in]: a 1D tf.Tensor.
+        Returns:
+            A scalar loss and the gradients w.r.t. the `params_1d`.
+        """
+
+        # use GradientTape so that we can calculate the gradient of loss w.r.t. parameters
+        with tf.GradientTape() as tape:
+            # update the parameters in the model
+            assign_new_model_parameters(params_1d)
+            # calculate the loss
+            loss_value = loss(X_u_train,u_train,X_f_train)
+
+        # calculate gradients and convert to 1D tf.Tensor
+        grads = tape.gradient(loss_value, model.trainable_variables)
+        grads = tf.dynamic_stitch(idx, grads)
+
+        # print out iteration & loss
+        f.iter.assign_add(1)
+        tf.print("Iter:", f.iter, "loss:", loss_value)
+
+        # store loss value so we can retrieve later
+        tf.py_function(f.history.append, inp=[loss_value], Tout=[])
+
+        return loss_value, grads
+
+    # store these information as members so we can use them outside the scope
+    f.iter = tf.Variable(0)
+    f.idx = idx
+    f.part = part
+    f.shapes = shapes
+    f.assign_new_model_parameters = assign_new_model_parameters
+    f.history = []
+
+    return f
 
 
-# +
-class c:
-    def __init__(self):
-        self.ndims = 60
-        self.minimum = np.ones([self.ndims], dtype='float64')
-        self.scales = np.arange(self.ndims, dtype='float64') + 1.0
-        self.start = np.arange(self.ndims, 0, -1, dtype='float64')
+func = function_factory(m1, m1.loss_Total, X_u_train,u_train,X_f_train)
+init_params = tf.dynamic_stitch(func.idx, m1.trainable_variables)
 
-  # The objective function and the gradient.
-    def quadratic_loss_and_gradient(self,x):
-        return tfp.math.value_and_gradient(
-            lambda x: tf.reduce_sum(
-                self.scales * tf.math.squared_difference(x, self.minimum), axis=-1),
-            x)  
-    def train(self):
-        optim_results = tfp.optimizer.lbfgs_minimize(
-          self.quadratic_loss_and_gradient,
-          initial_position=self.start,
-          num_correction_pairs=10,
-          tolerance=1e-8)
-        # Check that the search converged
-        assert(optim_results.converged)
-        # Check that the argmin is close to the actual value.
-        np.testing.assert_allclose(optim_results.position, self.minimum)
-  
+results = tfp.optimizer.lbfgs_minimize(
+    value_and_gradients_function=func, initial_position=init_params, max_iterations=5)
 
-# -
+m1.loss_Total(X_u_train,u_train,X_f_train)
 
-c1 = c()
-c1.train()
+
