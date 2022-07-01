@@ -65,6 +65,7 @@ model.fit(x,y,batch_size=2,epochs=2)
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+import tensorflow_probability as tfp
 import numpy as np
 
 
@@ -169,16 +170,16 @@ def createModel(layer,Model):
     return model
 
 
-X_u_train = tf.random.normal([10,2])
-u_train = tf.random.normal([10,1])
-X_f_train = tf.random.normal([10,2])
+X_u_train = tf.random.normal([1000,2])
+u_train = tf.random.normal([1000,1])
+X_f_train = tf.random.normal([1000,2])
 
-layer = [2,4,4,1]
+layer = [2,20,20,20,20,1]
 m1= createModel(layer,MyPinn)
 m1.compile(keras.optimizers.SGD(learning_rate=0.1))
 m1.summary()
 
-m1.train_model(X_u_train,u_train,X_f_train)
+m1.train_model(X_u_train,u_train,X_f_train,epochs=5000)
 
 
 ## 测试PINN (请无视)
@@ -213,3 +214,164 @@ class MyPINN(keras.Sequential):
         return {m.name: m.result() for m in self.metrics}
 
 # > 以上内容截止至 6-30 markdown
+
+# # 7-1 记录
+#
+# ### Adam优化器 & tfp中L-BFGS
+
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import tensorflow_probability as tfp
+import numpy as np
+
+
+def createModel(layer,X_u_train,u_train,X_f_train):
+    if len(layer) < 2:
+        print("层数小于2！, 无法构建神经网络")
+        return 
+    model = MyPinn(X_u_train,u_train,X_f_train,name = "PINN")
+    model.add(keras.Input(shape=(layer[0],)))
+    for i in range(1,len(layer)-1):
+        model.add(layers.Dense(layer[i], activation="relu", name="layer{}".format(i)))
+    model.add(layers.Dense(layer[-1], name="outputs"))    
+    return model
+
+
+class MyPinn(keras.Sequential): ## 正在编写
+    def __init__(self,X_u_train,u_train,X_f_train,name = None):
+        
+        super(MyPinn, self).__init__(name=name)
+        self.nu = tf.constant(0.01/np.pi)
+        self.X_u_train = X_u_train
+        self.u_train = u_train
+        self.X_f_train = X_f_train
+        self.optimizer = keras.optimizers.Adam()
+    @tf.function
+    def test_gradient(self):
+        x = self.X_f_train[:,0]
+        t = self.X_f_train[:,1]
+        with tf.GradientTape() as tape:
+            tape.watch([x,t])
+            X = tf.stack([x,t],axis=-1)
+            u = self(X)
+        u_x = tape.gradient(u,x)
+        tf.print(u_x)
+    
+    @tf.function
+    def loss_U(self):
+        u_pred = self(self.X_u_train)
+        loss_u = tf.reduce_mean(tf.square(self.u_train - u_pred))
+        return loss_u
+    
+    
+    @tf.function
+    def loss_PDE(self):
+        x = self.X_f_train[:,0]
+        t = self.X_f_train[:,1]
+        with tf.GradientTape(persistent=True) as tape:
+            tape.watch([x,t])
+            X = tf.stack([x,t],axis=-1)
+            u = self(X)  
+            u_x = tape.gradient(u,x)         
+            
+        u_t = tape.gradient(u, t)     
+        u_xx = tape.gradient(u_x, x)
+        
+        del tape
+        
+        f = u_t + (self(self.X_f_train))*(u_x) - (self.nu)*u_xx
+
+        loss_f = tf.reduce_mean(tf.square(f))
+
+        return loss_f
+    
+    
+    def loss_Total(self):
+        loss_u = self.loss_U()
+        loss_f = self.loss_PDE()
+        
+        loss_total = loss_u + loss_f
+        
+        return loss_total
+    
+    @tf.function
+    def train_step(self):
+        with tf.GradientTape(persistent=True) as tape:
+            loss_total = self.loss_Total()
+                   
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss_total, trainable_vars)
+        
+        del tape
+        
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+        return loss_total
+    
+    def train_model(self,epochs=100):
+        for epoch in tf.range(1,epochs+1):
+            loss_total = self.train_step()
+            if epoch % 10 == 0:                
+                print(
+                    "Training loss (for per 10 epoches) at epoch %d: %.4f"
+                    % (epoch, float(loss_total))
+                )
+    
+    ### 尝试使用tfp L-BFGS 优化器，正在编写中。。。未完待续。。。
+    @tf.function
+    def loss_and_gradients_function(self,trainable_variables):
+        with tf.GradientTape(persistent=True) as tape:
+            loss_total = self.loss_Total()   
+        gradients = tape.gradient(loss_total,trainable_variables)
+        
+        del tape
+        
+        return loss_total,gradients
+    def train_by_LBFGS(self):   
+        optim_result = tfp.optimizer.lbfgs_minimize(
+                      self.loss_and_gradients_function,
+                      initial_position=self.trainable_variables,
+                      tolerance=1e-8)
+
+        return optim_result
+
+X_u_train = tf.random.normal([1000,2])
+u_train = tf.random.normal([1000,1])
+X_f_train = tf.random.normal([1000,2])
+
+layer = [2,20,20,1]
+m1= createModel(layer,X_u_train,u_train,X_f_train)
+
+m1.train_by_LBFGS()
+
+
+# +
+class c:
+    def __init__(self):
+        self.ndims = 60
+        self.minimum = np.ones([self.ndims], dtype='float64')
+        self.scales = np.arange(self.ndims, dtype='float64') + 1.0
+        self.start = np.arange(self.ndims, 0, -1, dtype='float64')
+
+  # The objective function and the gradient.
+    def quadratic_loss_and_gradient(self,x):
+        return tfp.math.value_and_gradient(
+            lambda x: tf.reduce_sum(
+                self.scales * tf.math.squared_difference(x, self.minimum), axis=-1),
+            x)  
+    def train(self):
+        optim_results = tfp.optimizer.lbfgs_minimize(
+          self.quadratic_loss_and_gradient,
+          initial_position=self.start,
+          num_correction_pairs=10,
+          tolerance=1e-8)
+        # Check that the search converged
+        assert(optim_results.converged)
+        # Check that the argmin is close to the actual value.
+        np.testing.assert_allclose(optim_results.position, self.minimum)
+  
+
+# -
+
+c1 = c()
+c1.train()

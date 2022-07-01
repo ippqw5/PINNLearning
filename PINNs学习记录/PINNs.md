@@ -1,5 +1,3 @@
-py
-
 # 耦合PINN、正反问题、3D问题的学习研究
 
 
@@ -253,3 +251,126 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
 <font color='purple'> **在当前文件夹 myPINN.py 进行了train_model测试，成功运行**</font>
 
 > 以上内容截止至 6-30 markdown
+
+---
+
+## 记录时间：2022-07-01
+
+### <font color='blue'>优化器</font>
+
+tf.keras.optimizers为我们提供了许多现成的优化器，比如SGD（最速下降）、Adam、RMSprop等等。
+
+假设，现有模型对象 MyPinn。
+
+可以通过 tf.keras.optimizers.Optimizer() 创建优化器对象。例如， MyPinn.optimizer = tf.keras.optimizers.SGD()
+
+tf.keras.optimizers.Optimizer()主要提供了两种Methods，为我们的参数进行优化。
+
+1. **apply_gradients(**
+       **grads_and_vars, name=None, experimental_aggregate_gradients=True**
+   **)**
+
+​	之前定义的MyPinn.train_step()中就使用了这种Method。
+
+​	我们先计算出grads，再使用apply_gradient()，进行参数优化。
+
+2. **minimize(**
+       **loss, var_list, grad_loss=None, name=None, tape=None**
+   **)**
+
+   minimize()方法先使用tf.GradientTape()计算出loss，再调用apply_gradients()。相当于把compute gradients和apply gradients 封装在一起。
+
+可以发现，apply_gradients()就是minimize()中的第二步。
+
+**为了精准地控制优化过程，并在优化过程中加上一些别的操作，我们使用 第1种方法 对参数进行优化。**
+
+
+
+### <font color='blue'>  Adam & L-BFGS </font>
+
+Adam优化器在deep neural network中具有广泛的应用。之前也说过，tf.keras.optimizers里内置了Adam优化器，我们直接调用就好。
+
+在PINN原作者的代码中(tensorflow1.x)，他们使用了两种优化器 ： Adam & L-BFGS。
+
+在 training model 过程中，他们先使用 Adam 进行优化，后使用 L- BFGS 进行优化。
+
+
+
+L-BFGS 是 秩2的拟牛顿方法(这学期 “最优化方法” 课上刚好学过)，它是基本牛顿方法的一种变形。牛顿方法在极值点附近时，收敛速度快，而拟牛顿方法在保持这个优秀性质的基础上，改进了牛顿方法过程的一些缺点，比如计算二阶导、矩阵求逆和G不正定等问题。
+
+
+
+然而在TensorFlow1.x中 并没有内置的 L-BFGS，作者实际是使用tensoflow1.x 提供的一个接口，使用 Scipy 库中的 L-BFGS。
+
+Scipy中调用L-BFGS的格式是：
+
+```python
+scipy.optimize.minimize(fun, 
+				x0, args=(),
+                method='L-BFGS-B', 
+                jac=None, hess=None, hessp=None, bounds=None, constraints=(), tol=None, callback=None, options=None)
+```
+
+ 其中fun是一个目标函数，返回目标函数值。
+
+> ```
+> fun(x, *args) -> float
+> ```
+
+where `x` **is a 1-D array with shape (n,)** and `args` is a tuple of the fixed parameters needed to completely specify the function.
+
+> 当 jac = True 时， fun()  retrun fval , gradients
+
+
+
+这时，再看一下作者调用L-BFGS的代码，就知道是什么意思了。。
+
+```python
+self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss, 
+                                                        method = 'L-BFGS-B', 
+                                                        options = {'maxiter': 3000,
+                                                                   'maxfun': 3000,
+                                                                   'maxcor': 50,
+                                                                   'maxls': 50,
+                                                                   'ftol' : 1.0 * np.finfo(float).eps})
+```
+
+
+
+这时如果我们写 self.optimizer.minimize() 实际上就会调用 scipy.optimize.minimize( args ) ，args=上述代码中传入的参数，self.loss 相当于 fun。
+
+
+
+遗憾的是，在TensorFlow2.x中，该接口已经删除。
+
+当然我们仍能想办法使用Scipy中的L-BFGS，
+
+无非就是按照scipy.optimize.miminze()的调用格式，在MyPinn内部定义一个loss_fun(x) ，x is 1-D array with shape = (n,)，
+
+作为scipy.optimize.miminze(fun,...)中的fun，但这意味着需要把MyPinn的weights和bias "扁平化" 放在一个1维数组中，在优化完毕后，还要把结果再变成原来的形状，放回MyPinn里。。。感觉有点麻烦。
+
+
+
+又但是，虽然接口没了，但TensorFlow2.0中 tfp 库中有实现 L-BFGS 算法。😁
+
+
+
+**下面链接中，提问者(同时作为回答者，他自问自答)讨论了在TensorFlow2.x中使用 Scipy的L-BFGS 和 自带的L-BFGS 计算差别。**
+
+[python - Use Scipy Optimizer with Tensorflow 2.0 for Neural Network training - Stack Overflow](https://stackoverflow.com/questions/59029854/use-scipy-optimizer-with-tensorflow-2-0-for-neural-network-training)
+
+![](./L-BFGS in scipy and tfp.png)
+
+**可以发现使用TensorFlow2.0 tfp中的L-BFGS计算速度更快**
+
+**不过tfp中的L-BFGS计算结果略逊于Scipy中的L-BFGS，可能是TensorFlow默认float32，而Scipy是float64，以及Scipy中L-BFGS算法的实现比tfp的更好。**
+
+
+
+[Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
+
+注意如果想使用tfp的L-BFGS也是要求输入变量是1-D的。而我们的PiNN模型中的weights和bias都是以多维的形式保存，所以要先将它们进行“扁平化”，再传入L-BFGS函数中。（正在学习。。。）
+
+上面的链接讨论了如何将model中的变量“扁平化”。
+
+> 以上内容截止至 7-1 markdown
