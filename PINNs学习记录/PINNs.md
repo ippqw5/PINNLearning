@@ -432,10 +432,22 @@ tfp.optimizer.lbfgs_minimize(
 5.  将第一步提取出来的weights 和 bias 扁平化处理，作为initial_position
 6. tfp.optimizer.lbfgs_minimize(func,initial_position)即可！
 
-
-
-
-
-
-
 > 以上内容截止至 7-1 markdown
+
+---
+
+## 记录时间：2022-07-04
+
+​	今天主要添加了 Data Preparation 和 Plot 的代码。并且，按日期命名，将代码分开在不同的NoteBook。
+
+​    使用下面链接中的训练数据。
+
+​	[Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
+
+​	不过，使用MyPinn训练Burgers Equation，训练结果不太理想，loss函数到了1e-1数量级几乎不下降了。一开始，我怀疑是，float32格式 **And** tfp中lbfgs与Scipy中lbfgs的差别。debug了很久，发现不是这些原因。
+
+​	因为上面的链接中，作者也有tfp中的lbfgs训练模型，我运行了一遍，仍然可以达到很好的效果，看来还需要进一步debug。
+
+
+
+​	题外话，使用Google colab可以白嫖算力，将.ipynb文件上传，可以在云端计算，还免费，而且我的电脑内存有时候不太够用，所以colab就很nice。
