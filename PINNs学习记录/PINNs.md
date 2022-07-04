@@ -361,7 +361,7 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
 
 
 
-**下面链接中，提问者(同时作为回答者，他自问自答)讨论了在TensorFlow2.x中使用 Scipy的L-BFGS 和 自带的L-BFGS 计算差别。**
+**下面链接中，高赞回答讨论了在TensorFlow2.x中使用 Scipy的L-BFGS 和 自带的L-BFGS 计算差别。**
 
 [python - Use Scipy Optimizer with Tensorflow 2.0 for Neural Network training - Stack Overflow](https://stackoverflow.com/questions/59029854/use-scipy-optimizer-with-tensorflow-2-0-for-neural-network-training)
 
@@ -379,7 +379,7 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
 
 注意如果想使用tfp的L-BFGS也是要求输入变量是1-D的。而我们的PiNN模型中的weights和bias都是以多维的形式保存，所以要先将它们进行“扁平化”，再传入L-BFGS函数中。
 
-上面的链接讨论了如何将model中的变量“扁平化”。
+上面的链接讨论了如何定义将model中的变量“扁平化”，变回来 以及 如何定义“function_factory"返回一个LBFGS需要的function。
 
 
 
@@ -430,11 +430,13 @@ tfp.optimizer.lbfgs_minimize(
 ​				      注意：需要将 gradients 也扁平化 再return。( gradients.shape = [weights,bias].shape,故也可以用idx扁平化 )
 
 5.  将第一步提取出来的weights 和 bias 扁平化处理，作为initial_position
-6. tfp.optimizer.lbfgs_minimize(func,initial_position)即可！
+6. 调用tfp.optimizer.lbfgs_minimize(func,initial_position)即可！
 
 > 以上内容截止至 7-1 markdown
 
 ---
+
+
 
 ## 记录时间：2022-07-04
 
@@ -444,10 +446,121 @@ tfp.optimizer.lbfgs_minimize(
 
 ​	[Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
 
-​	不过，使用MyPinn训练Burgers Equation，训练结果不太理想，loss函数到了1e-1数量级几乎不下降了。一开始，我怀疑是，float32格式 **And** tfp中lbfgs与Scipy中lbfgs的差别。debug了很久，发现不是这些原因。
+​	不过，我在使用MyPinn训练Burgers Equation，训练结果不太理想。一开始，我怀疑是，float32格式 **And** tfp中lbfgs与Scipy中lbfgs的差别。debug了很久，发现不是这些原因。
 
-​	因为上面的链接中，作者也有tfp中的lbfgs训练模型，我运行了一遍，仍然可以达到很好的效果，看来还需要进一步debug。
+​	因为上面的链接中，作者也有用tfp中的lbfgs训练模型，我运行了一遍，仍然可以达到很好的效果，看来还需要debug(恼。
 
 
 
 ​	题外话，使用Google colab可以白嫖算力，将.ipynb文件上传，可以在云端计算，还免费，而且我的电脑内存有时候不太够用，所以colab就很nice。
+
+
+
+> 以上内容截止至 7-4 markdown
+
+---
+
+
+
+## 记录时间 2022-07-05 Debug
+
+今天花了不少时间，总算让我发现了这个所谓的“bug”。**“找bug时间，比写代码时间要长”这次真的印证了这句话吧。**
+
+过程中，我甚至一度想要放弃自己的MyPinn模型，使用别人的构建模型代码（比如上面的链接） 。
+
+**在解释bug之前**，我需要说明一下，为什么我自己要用构建一套TensorFlow2.x的Pinn class，而不是用别人的。
+
+[Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
+
+**为方便说明，我将上述链接中的pinn代码称为 code**。
+
+1. TensorFlow2.x默认是eager动态图模式，这种模式计算速度比较慢，但方便调试。使用@tf.function函数装饰器，能将 eager转为**AutoGraph动态图模式**计算，效率堪比TensorFlow1.x的静态图（tf1.x只支持静态图），同时也方便调试。**但是呢，@tf.function 有一定的编程规范。**
+
+   而 **code**，没有使用TensorFlow2.0的@tf.function功能。
+
+   这是原因一。
+
+2. **高阶API**。tf.keras已经为我们提供了各种层、优化器、损失函数等 以及 **2种主要构建模型的方式**：Sequential()，函数式API。灵活使用函数式API，理论上可以构建任何模型，不单单是神经网络。而Pinn使用Sequential()即可。比如，我的代码就是让MyPinn继承keras.Sequential
+
+   而在**code**中，Pinn继承的是keras.Module，Module实际上是Sequential等高阶API的基类，它提供的功能是记录在类中出现的Variables，而没有Sequential中更多好用方便的功能，比如直接使用add方法，搭配keras.layers.Dense，为MyPinn添加层(本质上也是添加Variables)。
+
+   若使用**code**中的方法，让Pinn单单继承Module，则需要自己做变量初始化，并且没有别的好用的功能。它只能记录class中出现的变量而已。
+
+   这是原因二。
+
+3. **优化器**。在code中为了使用LBFGS，在类中定义了 “变量一维化、一维变量转为原来形状”等 专门为使用LBFGS的函数。我不喜欢这样子。
+
+   **为了清晰性，我更倾向于将模型定义和优化方法分离开，而不是全在写在class中。**
+
+    “变量一维化、一维变量转为原来形状”这样的函数，只是为使用LBFGS服务的，他应该定义在外面。如果使用内置的Adam、SDG等优化器，完全不需要定义这些函数，直接在train_step()中，optimizer.apply_gradient（）即可。
+
+   这是原因三。
+
+
+
+所以bug出现在哪呢？@tf.function 编程不规范？ 变量名写错？
+
+**在loss_PDE的定义中。**
+
+
+
+下面我分别给出我自己的定义以及code的定义
+
+```python
+def loss_PDE(self,X_f_train): #我的定义
+    
+      x = X_f_train[:,0]  # x.shape =(nums,)
+      t = X_f_train[:,1]  # t.shape =(nums,)
+      with tf.GradientTape(persistent=True) as tape:
+          tape.watch([x,t])
+          X = tf.stack([x,t],axis=-1) # X.shape = (nums,2)
+          u = self(X)  # predict u
+          u_x = tape.gradient(u,x)
+```
+
+```python
+def loss_PDE(self,X_f_train): #code的定义
+      
+      x = X_f_train[:,0:1] # x.shape = (nums,2)
+      t = X_f_train[:,1:2] # t.shape = (nums,2)
+      with tf.GradientTape(persistent=True) as tape:
+          tape.watch([x,t])
+          X = tf.stack([x[:,0],t[:,0]],axis=1) #X.shape = (nums,2)
+          u = self(X)  # predict u
+          u_x = tape.gradient(u,x)
+```
+
+两种代码的第3行和第4行，干的都是同一件事，把X_f_train的 x 和 t 分离出来（后面要对x，t求导）。
+
+```python
+with tf.GradientTape(persistent=True) as tape:
+	....
+```
+
+上述将计算过程记录在“tape”中，后面可以求tape中出现变量（包括中间变量）的导数。
+
+tape.watch([x,t])将x，t也记录到tape中，因为默认只记录variables，而此处x和f是constant。
+
+我们将x,t通过tf.stack()拼接到一起组成模型的input：X，调用self(X) predict u。tf.stack也会被看做一种算子，被记录到tape中。
+
+你或许发现X和loss_PDE函数传入的X_f_train**数值上一样**，为什么不直接self(X_f_trian)呢？**因为它仅仅是数值上一样。。。**
+
+可以试一下改用u=self(X_f_train)，那么u_x返回的None。
+
+
+
+令人我感到奇怪的是，两种代码的第7步，最后返回的X是一样的，为什么只有第二种（code的实现）OK？而我的就不行。
+
+其实我在写代码的时候，参考了code的loss_PDE，觉得他的操作有点**多余**，就用了一种更清楚的写法，正如第一种写法那样，然而训练的结果就是，第一种不行！？
+
+
+
+**下面我再验证一下两种写法的(第7行)X是否一致?** 
+
+<img src="./Data/BUG.png" style="zoom:75%;" />
+
+结果显示 g 和 gg ，确实是一样的（全是True，没有截完全)，令人疑惑。
+
+**不管了。后面我使用了code的写法.模型的loss函数能不断下降了，效果见7_4-7_5MyPINN_Burgers.ipynb**
+
+> 以上内容截止至 7-5 markdown
