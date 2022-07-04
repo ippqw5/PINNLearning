@@ -557,7 +557,7 @@ tape.watch([x,t])将x，t也记录到tape中，因为默认只记录variables，
 
 **下面我再验证一下两种写法的(第7行)X是否一致?** 
 
-<img src="./Data/BUG.png" style="zoom:75%;" />
+<img src="./Data/bug.png" style="zoom:75%;" />
 
 结果显示 g 和 gg ，确实是一样的（全是True，没有截完全)，令人疑惑。
 
