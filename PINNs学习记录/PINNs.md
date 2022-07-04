@@ -365,7 +365,7 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
 
 [python - Use Scipy Optimizer with Tensorflow 2.0 for Neural Network training - Stack Overflow](https://stackoverflow.com/questions/59029854/use-scipy-optimizer-with-tensorflow-2-0-for-neural-network-training)
 
-<img src="./L-BFGS in scipy and tfp.png" />
+<img src="./Data/L-BFGS in scipy and tfp.png" />
 
 
 
