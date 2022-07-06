@@ -1,8 +1,8 @@
-# 耦合PINN、正反问题、3D问题的学习研究
+耦合PINN、正反问题、3D问题的学习研究
 
 
 
-## 记录时间：2022-06-29 
+# 06-29 
 
 ### 什么是PINN？
 
@@ -71,7 +71,7 @@ def createModel(layer):
 
 ---
 
-## 记录时间：2022-06-30
+# 06-30
 
 ### <font color='blue'>1.PINN模型搭建（续）</font>
 
@@ -258,7 +258,7 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
 
 ---
 
-## 记录时间：2022-07-01
+# 07-01
 
 ### <font color='blue'>优化器</font>
 
@@ -438,7 +438,7 @@ tfp.optimizer.lbfgs_minimize(
 
 
 
-## 记录时间：2022-07-04
+# 07-04
 
 ​	今天主要添加了 Data Preparation 和 Plot 的代码。并且，按日期命名，将代码分开在不同的NoteBook。
 
@@ -462,7 +462,7 @@ tfp.optimizer.lbfgs_minimize(
 
 
 
-## 记录时间 2022-07-05 Debug
+# 07-05 Debug
 
 今天花了不少时间，总算让我发现了这个所谓的“bug”。**“找bug时间，比写代码时间要长”这次真的印证了这句话吧。**
 
@@ -564,3 +564,57 @@ tape.watch([x,t])将x，t也记录到tape中，因为默认只记录variables，
 **不管了。后面我使用了code的写法.模型的loss函数能不断下降了，效果见7_4-7_5MyPINN_Burgers.ipynb**
 
 > 以上内容截止至 7-5 markdown
+
+---
+
+# 07-06
+
+今天阅读学习了一些NN在PDE求解问题中的多种方法。
+
+### 神经网络常见结构
+
+<img src='./Data/NN_structures.png' style="zoom:50%;"  >
+
+
+
+**目前PINN大多为全连接前向网络(tensorflow中的Dense层)，尝试使用如卷积层、循环网络、反馈网络？**
+
+
+
+### 神经网络对边界条件的处理方式
+
+ANN: artificial neural network
+
+1. 纯网络型
+
+   1. 1  Loss = $\lambda_1 * MSE_{pde} + \lambda_2 * MSE_{BC}$  ， 原始的PINN模型就使用的是这种方式，利用边界条件和预测值计算$MSE_{BC}$,纳入loss中。
+
+   1. 2  将边界条件带入神经网络表达式——取代部分weights，通过微分方程残差$MSE_{pde}$优化剩余权值。如下图所示：
+
+<img src='./Data/BC_solution1.png' style="zoom:70%;" >
+
+​			**但我认为，对于某一个复杂pde，代码实现这种思想并不容易。**
+
+2. 边界吸收型
+
+​	边界吸收型的思想是：把神经网络看做函数 ANN(X)；构造边界函数BC(X)：当X∈边界时，BC为边界值，否则为0；构造 L(X)，当X∈边界时，L(X)=0.
+
+令试解  $y_t = BC(X) + L(X) * ANN(X) $, 此函数严格满足边界条件。再通过域内点计算$MSE_{pde}$，更新ANN。
+
+​	**BC(X),L(X)的构造方法：**
+
+​	<img src='./Data/BC_ODE.png'>
+
+
+
+<img src='./Data/BC_PDE.png'>
+
+**在PDE中如何解释ANN(X)的作用？** 通用BC(X),L(X)的构造方法？
+
+
+
+进一步，使用独立网络$ANN_{BC}$代替BC(X)。
+
+<img src='./Data/Duo_NN.png' style="zoom:50%;" >
+
+有了这种独立网络的思想，也有人提出多网络的模型。即用独立的网络分别预测PDE中的各种偏导，最后把loss加在一起。
