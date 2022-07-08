@@ -655,3 +655,12 @@ ANN: artificial neural network
 
 从NN的模型结构和训练策略上做一些调整，应该算是比较自然的优化策略。
 
+---
+
+# 07-08
+
+​	阅读一篇论文，关于pde耦合模型的数值求解方法。
+
+​	PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
+
+​    试了下小批量训练。将全部训练数据 **n等分后**，进行小批量训练。在相同的epochs下，小批量训练效果比原来好。效果见"7_8_myPINN_Burgers.ipynb"
