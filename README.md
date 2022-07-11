@@ -1,4 +1,5 @@
 <!-- #region -->
+
 # 学习PINNs and TensorFlow 
 
 
@@ -21,6 +22,7 @@
 | **7.6**         | 今天阅读学习了一些NN在PDE求解问题中的多种方法。              |                                                              |
 | **7.7**         | 阅读张学长的论文：PINN求解naiver-stokes/Darcy耦合模型的正反问题 | 简单来说，Inputs连接两个独立的NN，分别预测$U_{ns} 和 U_{d}$，<br />构造naiver-stokes方程组和Darcy方程组的各自微分方程残差项，<br />以及interface处的残差项，最后加到一起，形成loss。 |
 | 7.8             | 阅读一篇论文，关于pde耦合模型的数值求解方法。<br />尝试小批量训练模型，即把训练数据分组，规模减少，但训练次数相应会上升。 |                                                              |
+| **7.11**        | 更新PINN学习记录。**使用PINN求解parabolic耦合pde模型**       | 代码见 **7_11_Parabolic耦合pde模型.ipynb**<br />画图部分还没写，训练数据的生成代码，写的有些冗长，后面会优化一下。 |
 
 
 

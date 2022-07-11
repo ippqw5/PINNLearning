@@ -664,3 +664,29 @@ ANN: artificial neural network
 ​	PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
 
 ​    试了下小批量训练。将全部训练数据 **n等分后**，进行小批量训练。在相同的epochs下，小批量训练效果比原来好。效果见"7_8_myPINN_Burgers.ipynb"
+
+---
+
+# 07-11 PINN求解parabolic耦合pde模型
+
+​	用PINN求解最简单的parabolic耦合pde模型——PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
+
+<img src='./Data/公式0.png'>
+
+<img src='./Data/公式1.png'>
+
+
+
+模型定义和训练模型的代码写好了，画图的还没写。训练数据的生成代码，写的有些冗长，后面会优化一下。
+
+代码见 **7_11_Parabolic耦合pde模型.ipynb**
+
+
+
+**网络结构:** 
+
+两个独立的神经网络$NN_1 , NN_2$，分别用于预测$u_1,u_2$, 构造 $ loss = loss_{u1} + loss_{u2} + loss_{interface}$，每次训练同时训练两个网络，耦合性体现在$loss_{interface}$.
+
+<img src='./Data/coupleNN.png' style='zoom:50%'>
+
+每次训练模型，$NN_1 和 NN_2 $各自传入一批"不同的" 内部点训练集 和 边界点训练集(不包括interface)。 $NN_f和NN_p$在interface处的训练集。
