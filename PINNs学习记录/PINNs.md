@@ -690,3 +690,13 @@ ANN: artificial neural network
 <img src='./Data/coupleNN.png' style='zoom:50%'>
 
 每次训练模型，$NN_1 和 NN_2 $各自传入一批"不同的" 内部点训练集 和 边界点训练集(不包括interface)。 $NN_f和NN_p$在interface处的训练集。
+
+---
+
+# 07-12 训练parabolic耦合pde的PINN模型
+
+​	u1拟合的比较好。u2拟合效果很差，特别是在边界处。
+
+​	正在研究，不知是代码有错，还是说因为u2表达式比较复杂，有y的二次项。
+
+​	训练代码见  **7_11_Parabolic耦合pde模型.ipynb**
