@@ -740,6 +740,6 @@ ANN: artificial neural network
 
 ## 	代码 & 论文阅读
 
-​	TensorFlow2.0 Metric评估函数 ，代码见 tensorflow学习记录/10_Metric.ipynb
+​	TensorFlow2.0 Metric评估函数 ，代码见 tensorflow学习记录/12_Metric.ipynb
 
 ​	阅读 [Deep Learning-An Introduction](../论文资料/Deep Learning-An Introduction.pdf )。这篇文章从数学角度，从零开始介绍Deep Learning，是一篇介绍性的文章。	
