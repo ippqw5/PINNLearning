@@ -659,6 +659,8 @@ ANN: artificial neural network
 
 # 07-08
 
+##  	小批量训练模式实验
+
 ​	阅读一篇论文，关于pde耦合模型的数值求解方法。
 
 ​	PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
@@ -667,7 +669,9 @@ ANN: artificial neural network
 
 ---
 
-# 07-11 PINN求解parabolic耦合pde模型
+# 07-11 
+
+## PINN求解parabolic耦合pde模型
 
 ​	用PINN求解最简单的parabolic耦合pde模型——PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
 
@@ -693,10 +697,49 @@ ANN: artificial neural network
 
 ---
 
-# 07-12 训练parabolic耦合pde的PINN模型
+# 07-12
+
+##  训练parabolic耦合pde的PINN模型
 
 ​	u1拟合的比较好。u2拟合效果很差，特别是在边界处。
 
 ​	正在研究，不知是代码有错，还是说因为u2表达式比较复杂，有y的二次项。
 
 ​	训练代码见  **7_11_Parabolic耦合pde模型.ipynb**
+
+---
+
+# 07-13 
+
+## **与2位学长会议交流，讨论PINN**
+
+解决了不少疑问，PINN在边界处的拟合效果确实一般。
+
+<img src = './Data/会议.png'>
+
+---
+
+# 07-15——07-17 
+
+## **改进parabolic耦合pde的代码。**
+
+改进方案如下：
+
+1. 与同学讨论发现，之前的采样点为等分，不够“随机”，使用normal或者拉丁高次方采样效果更好
+2. 训练次数不足，增加训练次数
+3. 将边界点也同时纳入内部点训练，导致在较少训练次数下，边界处效果不好
+4. 耦合阶段训练结束后，继续对两个区域分布进行单独的PINN训练，使得精准度进一步提升
+
+效果见 **7_15_改进版Parabolic耦合pde.ipynb**
+
+
+
+---
+
+# 07-18 
+
+## 	代码 & 论文阅读
+
+​	TensorFlow2.0 Metric评估函数 ，代码见 tensorflow学习记录/10_Metric.ipynb
+
+​	阅读 [Deep Learning-An Introduction](../论文资料/Deep Learning-An Introduction.pdf )。这篇文章从数学角度，从零开始介绍Deep Learning，是一篇介绍性的文章。	
