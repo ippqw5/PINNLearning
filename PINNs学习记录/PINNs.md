@@ -743,3 +743,34 @@ ANN: artificial neural network
 ​	TensorFlow2.0 Metric评估函数 ，代码见 tensorflow学习记录/12_Metric.ipynb
 
 ​	阅读 [Deep Learning-An Introduction](../论文资料/Deep Learning-An Introduction.pdf )。这篇文章从数学角度，从零开始介绍Deep Learning，是一篇介绍性的文章。	
+
+---
+
+# 07-20
+
+## Self-Adaptive PINN
+
+今天对parabolic耦合pde的PINN模型进一步改进。主要有如下两个方面：
+
+1. 预训练模式
+2. 自适应loss函数因子
+
+**预训练模式**：在训练耦合模型前，先各种单区域进行PINN训练。有利于耦合模型边界训练，以及训练效率。
+
+**自适应loss函数因子：**
+$$
+Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2} \\
+loss_{u1} := loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
+loss_{u2} := loss_{u2}^{bc} + loss_{u2}^{f} + loss_{u2}^{i} \\
+$$
+​	其中$\alpha_i$就是自适应因子。
+
+​	考虑到实际训练过程中，u1和u2的loss大小不一样，**”优先“**训练loss较大的一方，即在$loss_{ui}$前乘上一个较大的因子，使其在整个**$Loss$**中占比更大，从而达到优先训练的目标。
+
+**什么是自适应？**
+
+​	把$\alpha_1,\alpha_2$也看做变量。在训练模型参数的过程中，我们使用的梯度下降算法，是基于“负梯度”。
+
+​	如果使用**“正梯度”**去改变$\alpha_1,\alpha_2$，能够使得$loss_{ui}$对应的$\alpha_{i}$更大。
+
+​	实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$, 
