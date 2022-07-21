@@ -774,3 +774,15 @@ $$
 ​	如果使用**“正梯度”**去改变$\alpha_1,\alpha_2$，能够使得$loss_{ui}$对应的$\alpha_{i}$更大。
 
 ​	实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$, 
+
+---
+
+# 07-21
+
+## 优化训练步骤
+
+1. 预训练——单区域训练
+2. 耦合训练——Adam算法
+3. 耦合训练——LBFGS算法
+
+**代码见0721_自适应&LBFGS_Parabolic耦合模型.ipynb**<br />比较Adam算法和LBFGS算法的训练表现。<br />（有必要深入了解Adam的性质，在训练后期表现远不如LBFGS）
