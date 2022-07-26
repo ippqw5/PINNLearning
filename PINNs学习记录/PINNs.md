@@ -824,3 +824,101 @@ $$
 ​	参数反问题是指已知部分、乃至全部真解，反推模型的参数，以传统方法来说，这是很困难的，但在PINN框架下，只需要将模型参数设为变量，带入真解训练模型（同时训练参数），可以反推参数。
 
 代码见 **0723_参数反问题_Parabolic耦合模型.ipynb**
+
+---
+
+# 07-26 
+
+## 3d 算例& n-d 算例
+
+> *之前所有的代码都是基于如下的模型和算例*，可以看到是2d的，即u(x,y,t)。
+
+### **parabolic 耦合PDE模型**
+
+ In this work, a simplified model of diffusion through two adjacent materials which are coupled across their shared and rigid interface $I$ through a jump condition is considered. This problem captures some of the time-stepping difficulties of the ocean-atmosphere problem described in 1.2. The domain consists of two subdomains $\Omega_{1}$ and $\Omega_{2}$ coupled across an interface $I$ (example in Figure $1.1$ below). The problem is: given $\nu_{i}>0, f_{i}:[0, T] \rightarrow H^{1}\left(\Omega_{i}\right), u_{i}(0) \in$ $H^{1}\left(\Omega_{i}\right)$ and $\kappa \in \mathbb{R}$, find (for $\left.i=1,2\right) u_{i}: \bar{\Omega}_{i} \times[0, T] \rightarrow \mathbb{R}$ satisfying
+$$
+\begin{aligned}
+u_{i, t}-\nu_{i} \Delta u_{i} &=f_{i}, \quad \text { in } \Omega_{i}, &(1.1)\\
+-\nu_{i} \nabla u_{i} \cdot \hat{n}_{i} &=\kappa\left(u_{i}-u_{j}\right), \quad \text { on } I, \quad i, j=1,2, i \neq j, &(1.2)\\
+u_{i}(x, 0) &=u_{i}^{0}(x), \quad \text { in } \Omega_{i}, &(1.3)\\
+u_{i} &=g_{i}, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I . &(1.4)
+\end{aligned}
+$$
+### **2d算例**
+
+Assume $\Omega_{1}=[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[-1,0]$, so $I$ is the portion of the $x$-axis from 0 to 1 . Then $\mathbf{n}_{1}=[0,-1]^{T}$ and $\mathbf{n}_{2}=[0,1]^{T}$. For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
+$$
+\begin{aligned}
+&u_{1}(t, x, y)=a x(1-x)(1-y) e^{-t} \\
+&u_{2}(t, x, y)=a x(1-x)\left(c_{1}+c_{2} y+c_{3} y^{2}\right) e^{-t} .
+\end{aligned}
+$$
+
+The constants $c_{1}, c_{2}, c_{3}$ are determined from the interface conditions (1.2) and the boundary conditions for $u_{2}$. One may verify that with the following choices for $c_{1}, c_{2}, c_{3}, u_{1}$ and $u_{2}$ will satisfy (1.1)-(1.4) with $g_{1}=g_{2}=0$, i. e. when $x \in\{0,1\}$ or $y \in\{-1,1\}$ :
+$$
+c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .
+$$
+The numerical analysis performed in Section 4 indicates that by choosing $\kappa$ to be no larger than $\nu_{1}, \nu_{2}$ the IMEX scheme should perform as well as the implicit scheme. Computational results comparing the performance of the two methods are listed for two test problems:
+- Test Problem 1: $a=\nu_{1}=\nu_{2}=\kappa=1$.
+
+
+
+ 实际上 `u1` 和`u2`的构造是基于令$u_{i} =g_{i} =0, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I$, 你会发现在边界上u1 = 0 。
+
+再根据(1.2)和(1.4)推出u2中参数需要满足的关系式。最后在根据(1.1)求出f1和f2。确定参数的值，最终构成一个完整的算例。
+
+> 下面我将算例拓展到3d，实际上可以推广到 n-d。
+
+### 3d算例
+
+Assume $\Omega_{1}=[0,1] \times[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[0,1]\times[-1,0]$, so $I$ is the plain of z=0 , the $x$-axis from 0 to 1 ,the $y$-axis from 0 to 1.Namely.  $I$ = $[0,1] \times[0,1] \times\{0\}$ . 
+
+Then $\mathbf{n}_{1}=[0,0,-1]^{T}$ and $\mathbf{n}_{2}=[0,0,1]^{T}$. 
+
+For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
+$$
+\begin{aligned}
+&u_{1}(t, x, y, z)=a xy(1-x)(1-y)(1-z) e^{-t} \\
+&u_{2}(t, x, y, z)=a xy(1-x)(1-y)\left(c_{1}+c_{2} z+c_{3} z^{2}\right) e^{-t} .
+\end{aligned}
+$$
+
+The constants $c_{1}, c_{2}, c_{3}$ are determined from the interface conditions (1.2) and the boundary conditions for $u_{2}$. One may verify that with the following choices for $c_{1}, c_{2}, c_{3}, u_{1}$ and $u_{2}$ will satisfy (1.1)-(1.4) with $g_{1}=g_{2}=0$, i. e. when $(x,y,z) \in\{x=1,0\leq y \leq 1,0\leq z \leq 1\}, u_1(x,y,z,t) = 0$ :
+$$
+c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .
+$$
+The numerical analysis performed in Section 4 indicates that by choosing $\kappa$ to be no larger than $\nu_{1}, \nu_{2}$ the IMEX scheme should perform as well as the implicit scheme. Computational results comparing the performance of the two methods are listed for two test problems:
+
+- Test Problem 1: $a=\nu_{1}=\nu_{2}=\kappa=1$.
+
+### n-d 算例
+
+$\Omega_{1}=\underbrace{[0,1] \times... \times[0,1] }_{n-1}\times[0,1]$,$\Omega_{2}=\underbrace{[0,1] \times... \times[0,1] }_{n-1}\times[-1,0]$,  $I$ = $\underbrace{[0,1] \times... \times[0,1] }_{n-1}\times\{0\}$ .
+
+Then $\mathbf{n}_{1}=\underbrace{[0,...,0}_{n-1},-1]^{T}$ and $\mathbf{n}_{2}=\underbrace{[0,...,0}_{n-1},1]^{T}$. 
+
+For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
+$$
+\begin{aligned}&u_{1}(t, x_1, x_2, ...,x_n)=ae^{-t} \prod \limits_{i=1}^n
+x_i(1-x_i)  \\
+&u_{2}(t, x_1, x_2, ...,x_n)=ae^{-t} \left(c_{1}+c_{2} x_n+c_{3} x_n^{2}\right)\prod \limits_{i=1}^{n-1}
+x_i(1-x_i) .
+\end{aligned}
+$$
+The constants $c_{1}, c_{2}, c_{3}$ are determined from the interface conditions (1.2) and the boundary conditions for $u_{2}$. One may verify that with the following choices for $c_{1}, c_{2}, c_{3}, u_{1}$ and $u_{2}$ will satisfy (1.1)-(1.4) with $g_{1}=g_{2}=0$:
+$$
+c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .
+$$
+
+---
+
+## DeepXDE库&TensorDiffEq库
+
+DeepXDE&TensorDiffEq是现有的PINN求解器。
+
+- [DeepXDE(官方文档)](https://deepxde.readthedocs.io/en/latest/)，布朗大学 Lu 博士开发的，就是 DeepONet 那位 Lu 博士。他们组是本次 PINN 潮流的先驱，应该算是第一款也是“官方”的 PINN 求解器。集成了基于残差的自适应细化（RAR），这是一种在训练阶段优化残差点分布的策略，即在偏微分方程残差较大的位置添加更多点。还支持基于构造实体几何 （CSG） 技术的复杂几何区域定义。
+
+> [DeepXDE论文](../论文资料/DeepXDE- A Deep Learning Library for Solving Differential Equations.pdf)
+
+- [TensorDiffEq(官方文档)](https://docs.tensordiffeq.io/)看名字就知道是基于 Tensorflow，特点是做分布式计算。主旨是通过可伸缩（scalable）计算框架来求解 PINN，明显是为大规模工业应用做铺垫。
+
