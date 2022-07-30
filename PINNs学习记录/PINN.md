@@ -30,7 +30,7 @@ nonlinear partial differential equations](https://github.com/maziarraissi/PINNs)
 
 - PINN模型在耦合问题上的应用（这方面的研究似乎还不多），
 - PINN正负问题求解（看了一些文章说PINN的优势其实在于 **高维问题 & 反问题求解**
-- 代码实现若干算例（也许可能maybe Only one😁），最好能把模型应用到3维。
+- 使用tensorflow2.0，代码实现若干算例（也许可能maybe Only one😁），最好能把模型应用到3维。
 
 
 
@@ -583,17 +583,16 @@ tape.watch([x,t])将x，t也记录到tape中，因为默认只记录variables，
 
 ANN: artificial neural network
 
-1. 纯网络型
-
-   1. 1  Loss = $\lambda_1 * MSE_{pde} + \lambda_2 * MSE_{BC}$  ， 原始的PINN模型就使用的是这种方式，利用边界条件和预测值计算$MSE_{BC}$,纳入loss中。
-
-   1. 2  将边界条件带入神经网络表达式——取代部分weights，通过微分方程残差$MSE_{pde}$优化剩余权值。如下图所示：
+1. **纯网络型**
+1. 1  Loss = $\lambda_1 * MSE_{pde} + \lambda_2 * MSE_{BC}$  ， 原始的PINN模型就使用的是这种方式，利用边界条件和预测值计算$MSE_{BC}$,纳入loss中。
+   
+1. 2  将边界条件带入神经网络表达式——取代部分weights，通过微分方程残差$MSE_{pde}$优化剩余权值。如下图所示：
 
 <img src='./Data/BC_solution1.png' style="zoom:70%;" >
 
 ​			**但我认为，对于某一个复杂pde，代码实现这种思想并不容易。**
 
-2. 边界吸收型
+2. **边界吸收型**
 
 ​	边界吸收型的思想是：把神经网络看做函数 ANN(X)；构造边界函数BC(X)：当X∈边界时，BC为边界值，否则为0；构造 L(X)，当X∈边界时，L(X)=0.
 
@@ -740,7 +739,7 @@ ANN: artificial neural network
 
 ## 	代码 & 论文阅读
 
-​	TensorFlow2.0 Metric评估函数 ，代码见 tensorflow学习记录/12_Metric.ipynb
+​	学习TensorFlow2.0 Metric评估函数 ，代码见“ **tensorflow学习记录/12_Metric.ipynb**”
 
 ​	阅读 [Deep Learning-An Introduction](../论文资料/Deep Learning-An Introduction.pdf )。这篇文章从数学角度，从零开始介绍Deep Learning，是一篇介绍性的文章。	
 
@@ -748,9 +747,9 @@ ANN: artificial neural network
 
 # 07-20
 
-## Self-Adaptive PINN
+## Self-Adaptive-Weight c-PINN
 
-今天对parabolic耦合pde的PINN模型进一步改进。主要有如下两个方面：
+**今天对parabolic耦合pde的PINN模型进一步改进**。主要有如下两个方面：
 
 1. 预训练模式
 2. 自适应loss函数因子
@@ -767,13 +766,63 @@ $$
 
 ​	考虑到实际训练过程中，u1和u2的loss大小不一样，**”优先“**训练loss较大的一方，即在$loss_{ui}$前乘上一个较大的因子，使其在整个**$Loss$**中占比更大，从而达到优先训练的目标。
 
-**什么是自适应？**
+
+
+### **什么是自适应权重 Self-Adaptive-Weight？**
 
 ​	把$\alpha_1,\alpha_2$也看做变量。在训练模型参数的过程中，我们使用的梯度下降算法，是基于“负梯度”。
 
 ​	如果使用**“正梯度”**去改变$\alpha_1,\alpha_2$，能够使得$loss_{ui}$对应的$\alpha_{i}$更大。
 
 ​	实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$, 
+
+
+
+### 加权策略
+
+​		对$loss_{u1} 和 loss_{u2}$ 加权的**目的**：使得损失较大的一方在整个loss中的贡献更大，使得神经网络倾向于训练损失更大的一方。
+
+​		值得注意的是，如果两个神经网络之间没有联系，即 $loss_{u1}(x_1;\theta_1) , loss_{u2}(x_2;\theta_2) $的自变量$(x_1,\theta_1),(x_2,\theta_2)$之间没有重合的部分，那么对$loss_{u1} 和 loss_{u2}$ 加权实际上是没有"效果"的。
+
+​		原因是，如果两个神经网络之间没有联系时，那么我们对 $Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2}$求关于$\theta_{1}$的导数，$\frac{\partial loss}{\partial \theta_1} =\alpha_1 *  \frac{\partial loss_{u1}}{\partial \theta_1}$，可以发现与$\theta_2$无关，即跟第二个神经网络无关，只是在训练单个神经网络而已，而对单个神经网络的loss乘以一个数，实际是没有用的，相当于对优化问题中目标函数乘上一个常数，显然不影响我们寻找最优解。
+
+​		因此，此处的 $loss_{u1},loss_{u2}$具体为：
+$$
+loss_{u1} := loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
+loss_{u2} := loss_{u2}^{bc} + loss_{u2}^{f} + loss_{u2}^{i} \\
+$$
+其中$loss_{u1}^{i}$是u1在交界处Interface 的损失函数，与u1,u2有关，即与$\theta_{1},\theta_{2}$有关，它使得两个神经网络联系在一起。当$loss_{u1}^{i}$权重更大时，模型通过梯度下降更新两个网络的参数$\theta_{1},\theta_{2}$,会更倾向于使得$loss_{u1}$更小。
+
+
+
+在实际操作中，无论是单区域的PINN和耦合的PINN，在边界处的拟合效果相较于内部的拟合效果更差。
+
+往往在$loss_u^{bc}$前乘上一个常数k，比如k=10：
+$$
+Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2} \\
+loss_{u1} := 10* loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
+loss_{u2} := 10* loss_{u2}^{bc} + loss_{u2}^{f} + loss_{u2}^{i} \\
+$$
+
+### 多种自适应加权策略
+
+除了那种自适应权重 Self-Adaptive-Weight之外，我还构造了一种新的。
+
+令: 
+$$
+Loss^{(k)} = loss_{u1}^{(k)} + \alpha^{(k)} loss_{u2}^{(k)} ,\alpha^{(0)} = 1 \\
+
+ \alpha^{(k+1)} = \frac{loss_{u2}^{(k)} }{loss_{u1}^{(k)} + eps}, 其中 eps是一个很小的正数，防止分母为0\\
+$$
+想法就是，当前步的权重$\alpha^{(k)}$是根据上一步$loss_{u1}^{(k-1)},loss_{u2}^{(k-1)}$的比值来调整,当$\alpha^{(k)}$>1时，表示上一步loss_u2的值更大，故在当前步，让loss_u2乘上$a^{(k)}>1$,使得当前步loss_u2下降得更快。
+
+
+
+这种”自适应“策略有很多，想怎么构造就怎么构造，要抓的点就是根据以前的loss，动态地调整权重，使得当前步倾向训练于前N步中较大的 **子loss** 。
+
+
+
+​	
 
 ---
 
@@ -921,4 +970,19 @@ DeepXDE&TensorDiffEq是现有的PINN求解器。
 > [DeepXDE论文](../论文资料/DeepXDE- A Deep Learning Library for Solving Differential Equations.pdf)
 
 - [TensorDiffEq(官方文档)](https://docs.tensordiffeq.io/)看名字就知道是基于 Tensorflow，特点是做分布式计算。主旨是通过可伸缩（scalable）计算框架来求解 PINN，明显是为大规模工业应用做铺垫。
+
+---
+
+# 07-27 
+
+## 3D-parabolic代码编写
+
+​	在2d基础上新增一个维度即可，即在神经网络的输入Input层新增一个维度and增加对z的偏导。注意训练数据的生成以及图像生成需要略微改动。
+
+​	实验效果见 **0727_3D_Parabolic耦合模型.ipynb**
+
+> 因为增加一个维度，训练的难度有所上升，
+>
+> - 增加一些 hidden layers 以及 hidden size。
+> - 增加区域内采样点N_f的数量，和初边值条件的训练点。
 
