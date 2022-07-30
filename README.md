@@ -10,7 +10,7 @@
 
 | 日期            | 学习内容                                                     | 备注                                                         |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| 7.30            | 3d-parabolic耦合pde代码优化                                  | **0730_3D_Parabolic耦合模型.ipynb**<br />添加多种指标Metrics，以便观察训练过程<br />绘图优化 |
+| 7.30            | 3d-parabolic耦合pde代码优化                                  | **0730_3D_Parabolic耦合模型_优化.ipynb**<br />添加多种指标Metrics，以便观察训练过程<br />绘图优化 |
 | 7.27            | 3d-parabolic耦合pde代码编写                                  | **0727_3D_Parabolic耦合模型.ipynb**<br />(未完工部分：研究3d热力图画法ing) |
 | 7.26            | 更新PINN学习记录。<br />构造3d的parabolic耦合pde算例<br />DeepXDE库，TensorDiffEq库 | 之前用的2d parabolic耦合pde算例的解析解构造是有规律的，可能拓展到n维。<br />DeepXDE库，TensorDiffEq库为现有的基于PINN等方法求解pde的库。<br />阅读论文：Deep Learning-An Introduction.pdf |
 | **7.23**        | 参数反问题                                                   | **0723_参数反问题_Parabolic耦合模型.ipynb**<br />知道部分、全部真解，反推模型参数。 |
