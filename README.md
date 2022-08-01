@@ -5,18 +5,23 @@
 
 记录每日 TensorFlow 学习 & PINN 模型学习
 > 参考教材：**《30天吃掉那只TensorFlow2》** https://github.com/lyhue1991/eat_tensorflow2_in_30_days
+>
+> PINN相关代码 放在 "./PINN学习记录/"中
+>
+> 详细的每日学习内容记录 放在 "./PINN学习记录/PINNs.md"
 
 
 
 | 日期            | 学习内容                                                     | 备注                                                         |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 8.1             | Effective Tensorflow2(上)                                    | 阅读Effective Tensorflow2文档，更新PINN学习记录。            |
 | 7.30            | 3d-parabolic耦合pde代码优化                                  | **0730_3D_Parabolic耦合模型_优化.ipynb**<br />添加多种指标Metrics，以便观察训练过程<br />绘图优化 |
 | 7.27            | 3d-parabolic耦合pde代码编写                                  | **0727_3D_Parabolic耦合模型.ipynb**<br />(未完工部分：研究3d热力图画法ing) |
-| 7.26            | 更新PINN学习记录。<br />构造3d的parabolic耦合pde算例<br />DeepXDE库，TensorDiffEq库 | 之前用的2d parabolic耦合pde算例的解析解构造是有规律的，可能拓展到n维。<br />DeepXDE库，TensorDiffEq库为现有的基于PINN等方法求解pde的库。<br />阅读论文：Deep Learning-An Introduction.pdf |
+| 7.26            | 构造3d的parabolic耦合pde算例<br />DeepXDE库，TensorDiffEq库  | 之前用的2d parabolic耦合pde算例的解析解构造是有规律的，可能拓展到n维。<br />DeepXDE库，TensorDiffEq库为现有的基于PINN等方法求解pde的库。<br />阅读论文：Deep Learning-An Introduction.pdf |
 | **7.23**        | 参数反问题                                                   | **0723_参数反问题_Parabolic耦合模型.ipynb**<br />知道部分、全部真解，反推模型参数。 |
 | **7.22**        | 区域反问题                                                   | **0722_区域反问题 Parabolic耦合模型.ipynb**<br />简单地说，区域反问题是指边界条件未知，但知道部分内部数值解、真解，反推整个区域的解<br /> |
 | 7.21            | 优化训练步骤                                                 | **0721_自适应&LBFGS_Parabolic耦合模型.ipynb**<br />比较Adam算法和LBFGS算法的训练表现。<br />（有必要深入了解Adam的性质，在训练后期表现远不如LBFGS） |
-| **7.20**        | 更新PINN学习记录<br />封装耦合PINN代码，使用内置fit<br />自适应因子&预训练模型 | 代码见 **PINN学习记录/7_20_Self_Adaptive_Parabolic耦合pde模型**<br />有关自适应和预训练的说明在**PINN学习记录/PINNs.md** |
+| **7.20**        | 封装耦合PINN代码，使用内置fit<br />自适应因子&预训练模型     | 代码见 **PINN学习记录/7_20_Self_Adaptive_Parabolic耦合pde模型**<br />有关自适应和预训练的说明在**PINN学习记录/PINNs.md** |
 | **7.18**        | 更新PINN学习记录&tensorflow学习记录<br />代码 & 论文阅读     | Metric评估函数 & 论文阅读                                    |
 | **7.15**        | 改进parabolic耦合pde的代码。                                 | ①耦合训练5000次，loss不怎么下降 ②两个区域分布进行单独的PINN训练 训练准确度提升 |
 | 7.13            | 与2位学长会议交流，讨论PINN                                  | 解决了不少疑问，PINN在边界处的拟合效果确实一般。             |

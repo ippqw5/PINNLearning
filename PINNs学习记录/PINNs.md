@@ -718,7 +718,7 @@ ANN: artificial neural network
 
 ---
 
-# 07-15——07-17 
+# 07-15—07-17 
 
 ## **改进parabolic耦合pde的代码。**
 
@@ -986,3 +986,291 @@ DeepXDE&TensorDiffEq是现有的PINN求解器。
 > - 增加一些 hidden layers 以及 hidden size。
 > - 增加区域内采样点N_f的数量，和初边值条件的训练点。
 
+# 07-30
+## 3D-parabolic代码优化
+在原先代码的基础上，为CouplePinn的model增加了若干Metrics指标  
+：loss，loss_u1,loss_u2,loss_i,error_u1,error_u2。
+
+在每次epoch结束，都会打印这些指标的值，loss类指标反应了损失函数的变化，error类指标反应了测试集的错误率，即真实解与模型得出的解之间的差距。
+
+代码见`0730_3D_Parabolic耦合模型_优化.ipynb`，拟合效果还是不错的。
+
+此外，上述提到的指标有助于我们分析模型在训练中情况，帮助我们诊断训练结果的好坏。具体来说，有以下准则：
+
+设 loss：训练集的损失值，error：测试集的错误率
+
+- 情况一：loss不断下降，error不断下降，说明**模型仍在学习中**
+  - 解决办法：此时模型是最好的，不需要其他措施
+- 情况二：loss不断下降，error保持不断，说明**模型出现过拟合**
+  - 解决办法：采用数据增强(训练集N_u,N_f数量增大)，正则化等
+- 情况三：loss趋于不变，error不断下降，说明**训练数据集100%有问题**
+  - 解决办法：检查dataset
+- 情况四：loss趋于不变，error趋于不变，说明**学习遇到瓶颈或收敛(error已经很低)**
+  - 解决办法：减少学习率or增大batch_size(即减少批量总数)or停止训练
+---
+# 08-01
+## [Effective Tensorflow2(上)](https://www.tensorflow.org/guide/effective_tf2)
+    学习TensorFlow官网的 **Effective Tensorflow2** 文档，
+    高效地使用TensorFlow2搭建以及训练模型。
+
+
+## Overview
+This guide provides a list of best practices for writing code using TensorFlow 2 (TF2)
+## 如何更好使用 TensorFlow2 
+### **1.重构代码:更多的子模块**
+
+A good practice is to refactor your code into smaller functions that are called as needed. For best performance, you should try to decorate the largest blocks of computation that you can in a tf.function (note that the nested python functions called by a tf.function do not require their own separate decorations, unless you want to use different jit_compile settings for the tf.function). Depending on your use case, this could be multiple training steps or even your whole training loop. For inference use cases, it might be a single model forward pass.
+
+使用`@tf.function`装饰器 包装函数，特别对于大型计算类函数，比如向前传播`Forward Pass`, 单步训练`training by step`。
+
+在TensorFlow2中，默认动态图Eager模式，使用`@tf.function`装饰函数后，能使得该函数内的计算转为AutoGraph模式。
+
+简单的理解就是，函数被@tf.function后，每次调用它，都是从内存中取出该函数的计算图，而不是Eager模型下再次动态构建计算图。@tf.function能够提高计算效率，特别是对于大型计算。
+### **2.调节优化器Optimizer的默认学习率**
+
+TensorFlow的内置优化器集成在tf.keras.optimizers中，比如SDG、Adam、Nadam、RMSprop等。
+
+在TF2中，部分Keras的优化器有不同的默认学习率。如果发现模型的收敛表现不同，记得check优化器的默认学习率。
+
+SDG，Adam，RMSprop的默认学习率是一致的。
+
+The following default learning rates have changed:
+
+- optimizers.Adagrad from `0.01` to `0.001`
+- optimizers.Adadelta from `1.0` to `0.001`
+- optimizers.Adamax from `0.002` to `0.001`
+- optimizers.Nadam from `0.002` to `0.001`
+
+### **3.继承tf.Module以及使用Keras.layers管理Variables**
+
+`tf.Module`和`tf.keras.layers.Layer`含有两种好用的属性`variables` and `trainable_variables`,它们递归地收集了模型中所有的变量。
+
+This makes it easy to manage variables locally to where they are being used.
+
+Keras layers/models 继承 `tf.train.Checkpointable` 子类 并与`@tf.function`相融合,这使得我们能够直接保存checkpoint或者从Keras Objects中导出模型计算图。
+
+### **4. 结合tf.data.Dataset 和 @tf.function**
+
+`tf.data.Dataset`也叫数据管道。当训练数据量太多时，内存容量不足以支持将数据全部放入内存中并开始训练。数据管道的作用就是每次训练都从外存中拿一部分数据进来训练。
+
+Tensorflow Datesets(tfds) 包，提供了许多utilities，我们可以通过tf.data.Dataset的Object 加载predefined的数据集。
+
+例如，使用tfds加载MNIST数据集：
+
+```python
+datasets, info = tfds.load(name='mnist', with_info=True, as_supervised=True)
+mnist_train, mnist_test = datasets['train'], datasets['test']
+```
+接着预处理数据，做成训练数据：
+``` python
+BUFFER_SIZE = 10 # Use a much larger value for real code
+BATCH_SIZE = 64
+NUM_EPOCHS = 5
+
+
+def scale(image, label):
+  image = tf.cast(image, tf.float32)
+  image /= 255
+
+  return image, label
+```
+``` python
+train_data = mnist_train.map(scale).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+test_data = mnist_test.map(scale).batch(BATCH_SIZE)
+
+STEPS_PER_EPOCH = 5
+
+train_data = train_data.take(STEPS_PER_EPOCH)
+test_data = test_data.take(STEPS_PER_EPOCH)
+```
+
+``` python
+image_batch, label_batch = next(iter(train_data))
+# 这里 next,iter都是python内置的迭代器方法，用于取出一个元素
+```
+
+Use regular Python iteration to iterate over training data that fits in memory. Otherwise, tf.data.Dataset is the best way to stream training data from disk. Datasets are iterables (not iterators), and work just like other Python iterables in eager execution. You can fully utilize dataset async prefetching/streaming features by wrapping your code in tf.function, which replaces Python iteration with the equivalent graph operations using AutoGraph.
+
+``` python
+@tf.function
+def train(model, dataset, optimizer):
+  for x, y in dataset: #从dataset中解包出 x，y
+    with tf.GradientTape() as tape:
+      # training=True is only needed if there are layers with different
+      # behavior during training versus inference (e.g. Dropout).
+      prediction = model(x, training=True)
+      loss = loss_fn(prediction, y)
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+```
+
+如果使用Model内置的fit方法，更加方便，都不用考虑dataset的迭代。
+
+> fit是训练模型的函数，高阶API，程序员已经帮我们写好了一种一般化的训练步骤，只需要指定训练数据，优化器等模型配置即可开始训练，不用自己编写训练代码.
+
+``` python
+model.compile(optimizer=optimizer, loss=loss_fn)
+model.fit(dataset)
+```
+### **5.使用Keras内置的训练loop**
+
+当我们不需要对训练过程进行底层的控制，那么就使用Keras的 bulit-in 方法吧，比如 fit，evaluate和predict。
+
+- fit：训练模型
+- evaluate：评估模型
+- predict：预测/推理
+
+使用这些方法，包括但不限于如下优势：
+- 简单，傻瓜式
+- 支持 Numpy arrays, Python generators 和 `tf.data.Datasets`.
+- 自动使用 regularization 和 激活函数
+- 支持任意的callables作为 losses and metrics.
+- 支持 callbacks(回调函数) like tf.keras.callbacks.TensorBoard以及自定义回调函数。
+- 高性能，自动使用 TensorFlow graphs.
+
+可以发现上述方法支持的功能非常多，只需要传入相应的参数，这些功能的具体实现都不需要自己写。
+
+当然，如果模型训练过程乃至推断过程都比较复杂，需要对训练过程进行底层的控制，则需要自定义以及重写方法。
+
+fit()方法是会调用train_step()方法，即每一步的训练过程。
+fit大致结构是：
+``` python
+def fit(ds,epochs,*args,**kwargs):
+    ...
+    for epoch in tf.range(epochs):
+        ...
+        for data in ds:
+            self.train_step(data)
+        ...
+    ...
+    '''
+    每次epoch开始/结束，会计算Metric指标(如果传入)，
+    以及回调函数(如果传入)等。但训练的核心是train_step()函数。
+
+    往往来说，我们可以只重载train_step()达到底层控制的目的，
+    同时还能继续使用fit()中好用的功能。像搭积木一样。
+    '''
+```
+下面展示一个使用`Dataset`训练模型的例子：
+```python
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32, 3, activation='relu',
+                           kernel_regularizer=tf.keras.regularizers.l2(0.02),
+                           input_shape=(28, 28, 1)),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dropout(0.1),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Dense(10)
+])
+
+# Model is the full model w/o custom layers
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+model.fit(train_data, epochs=NUM_EPOCHS)
+loss, acc = model.evaluate(test_data)
+
+print("Loss {}, Accuracy {}".format(loss, acc))
+```
+``` Plain Text
+Epoch 1/5
+5/5 [==============================] - 9s 7ms/step - loss: 1.5762 - accuracy: 0.4938
+Epoch 2/5
+5/5 [==============================] - 0s 6ms/step - loss: 0.5087 - accuracy: 0.8969
+Epoch 3/5
+5/5 [==============================] - 2s 5ms/step - loss: 0.3348 - accuracy: 0.9469
+Epoch 4/5
+5/5 [==============================] - 0s 5ms/step - loss: 0.2445 - accuracy: 0.9688
+Epoch 5/5
+5/5 [==============================] - 0s 6ms/step - loss: 0.2006 - accuracy: 0.9719
+5/5 [==============================] - 1s 4ms/step - loss: 1.4553 - accuracy: 0.5781
+Loss 1.4552843570709229, Accuracy 0.578125
+```
+
+### **6.自定义训练过程**
+我在写PINN和Couple PINN的代码就是自定义训练过程。
+
+If Keras models work for you, but you need more flexibility and control of the training step or the outer training loops, you can implement your own training steps or even entire training loops.
+
+You can also implement many things as a `tf.keras.callbacks.Callback`.
+
+This method has many of the advantages mentioned previously, but gives you control of the train step and even the outer loop.
+
+**Train Loop 标准化三步走：**
+1. 通过Python Generator or tf.data.Dataset 迭代获得一个batch
+2. 使用tf.GradientTape()梯度磁带 记录计算流，用于求梯度。
+3. 使用tf.keras.optimizers 将梯度 apply to weights in model.
+
+**需要注意的是：**
+1. 当 call 模型或者layers时，总是传入training参数
+    `model(inputs,training=True)`
+2. 确保training设置正确，比如上边training = True
+3. 根据使用情况而定，某些variables可能只有 当模型在a batch of data上运行时才存在，出去之后就没了。
+4. 需要手动处理一些操作，比如 regularization losses for the model.
+
+There is no need to run variable initializers or to add manual control dependencies. tf.function handles automatic control dependencies and variable initialization on creation for you.
+
+一个例子：
+``` python
+model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(32, 3, activation='relu',
+                           kernel_regularizer=tf.keras.regularizers.l2(0.02),
+                           input_shape=(28, 28, 1)),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dropout(0.1),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Dense(10)
+])
+
+optimizer = tf.keras.optimizers.Adam(0.001)
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+@tf.function
+def train_step(inputs, labels):
+  with tf.GradientTape() as tape:
+    predictions = model(inputs, training=True)
+    regularization_loss=tf.math.add_n(model.losses)
+    pred_loss=loss_fn(labels, predictions)
+    total_loss=pred_loss + regularization_loss
+
+  gradients = tape.gradient(total_loss, model.trainable_variables)
+  optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+for epoch in range(NUM_EPOCHS):
+  for inputs, labels in train_data:
+    train_step(inputs, labels)
+  print("Finished epoch", epoch)
+```
+
+### **7.与Python控制流搭配使用tf.function**
+`tf.function` 提供了一种将data-dependent控制流 转为 计算图模式的等效控制流，比如 ```tf.cond```,```tf.range```,```tf.while_loop``` .
+
+One common place where data-dependent control flow appears is in sequence models. tf.keras.layers.RNN wraps an RNN cell, allowing you to either statically or dynamically unroll the recurrence. As an example, you could reimplement dynamic unroll as follows.
+
+
+``` python
+class DynamicRNN(tf.keras.Model):
+
+  def __init__(self, rnn_cell):
+    super(DynamicRNN, self).__init__(self)
+    self.cell = rnn_cell
+
+  @tf.function(input_signature=[tf.TensorSpec(dtype=tf.float32, shape=[None, None, 3])])
+  def call(self, input_data):
+
+    # [batch, time, features] -> [time, batch, features]
+    input_data = tf.transpose(input_data, [1, 0, 2])
+    timesteps =  tf.shape(input_data)[0]
+    batch_size = tf.shape(input_data)[1]
+    outputs = tf.TensorArray(tf.float32, timesteps)
+    state = self.cell.get_initial_state(batch_size = batch_size, dtype=tf.float32)
+    for i in tf.range(timesteps):  # 这里就用到了tf的控制流
+      output, state = self.cell(input_data[i], state)
+      outputs = outputs.write(i, output)
+    return tf.transpose(outputs.stack(), [1, 0, 2]), state
+```
