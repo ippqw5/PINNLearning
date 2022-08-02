@@ -1017,6 +1017,7 @@ DeepXDE&TensorDiffEq是现有的PINN求解器。
 ## Overview
 This guide provides a list of best practices for writing code using TensorFlow 2 (TF2)
 ## 如何更好使用 TensorFlow2 
+
 ### **1.重构代码:更多的子模块**
 
 A good practice is to refactor your code into smaller functions that are called as needed. For best performance, you should try to decorate the largest blocks of computation that you can in a tf.function (note that the nested python functions called by a tf.function do not require their own separate decorations, unless you want to use different jit_compile settings for the tf.function). Depending on your use case, this could be multiple training steps or even your whole training loop. For inference use cases, it might be a single model forward pass.
@@ -1026,6 +1027,8 @@ A good practice is to refactor your code into smaller functions that are called 
 在TensorFlow2中，默认动态图Eager模式，使用`@tf.function`装饰函数后，能使得该函数内的计算转为AutoGraph模式。
 
 简单的理解就是，函数被@tf.function后，每次调用它，都是从内存中取出该函数的计算图，而不是Eager模型下再次动态构建计算图。@tf.function能够提高计算效率，特别是对于大型计算。
+
+---
 ### **2.调节优化器Optimizer的默认学习率**
 
 TensorFlow的内置优化器集成在tf.keras.optimizers中，比如SDG、Adam、Nadam、RMSprop等。
@@ -1041,6 +1044,8 @@ The following default learning rates have changed:
 - optimizers.Adamax from `0.002` to `0.001`
 - optimizers.Nadam from `0.002` to `0.001`
 
+---
+
 ### **3.继承tf.Module以及使用Keras.layers管理Variables**
 
 `tf.Module`和`tf.keras.layers.Layer`含有两种好用的属性`variables` and `trainable_variables`,它们递归地收集了模型中所有的变量。
@@ -1049,6 +1054,7 @@ This makes it easy to manage variables locally to where they are being used.
 
 Keras layers/models 继承 `tf.train.Checkpointable` 子类 并与`@tf.function`相融合,这使得我们能够直接保存checkpoint或者从Keras Objects中导出模型计算图。
 
+---
 ### **4. 结合tf.data.Dataset 和 @tf.function**
 
 `tf.data.Dataset`也叫数据管道。当训练数据量太多时，内存容量不足以支持将数据全部放入内存中并开始训练。数据管道的作用就是每次训练都从外存中拿一部分数据进来训练。
@@ -1112,6 +1118,7 @@ def train(model, dataset, optimizer):
 model.compile(optimizer=optimizer, loss=loss_fn)
 model.fit(dataset)
 ```
+---
 ### **5.使用Keras内置的训练loop**
 
 当我们不需要对训练过程进行底层的控制，那么就使用Keras的 bulit-in 方法吧，比如 fit，evaluate和predict。
@@ -1189,7 +1196,7 @@ Epoch 5/5
 5/5 [==============================] - 1s 4ms/step - loss: 1.4553 - accuracy: 0.5781
 Loss 1.4552843570709229, Accuracy 0.578125
 ```
-
+---
 ### **6.自定义训练过程**
 我在写PINN和Couple PINN的代码就是自定义训练过程。
 
@@ -1246,7 +1253,7 @@ for epoch in range(NUM_EPOCHS):
     train_step(inputs, labels)
   print("Finished epoch", epoch)
 ```
-
+---
 ### **7.与Python控制流搭配使用tf.function**
 `tf.function` 提供了一种将data-dependent控制流 转为 计算图模式的等效控制流，比如 ```tf.cond```,```tf.range```,```tf.while_loop``` .
 
@@ -1274,3 +1281,200 @@ class DynamicRNN(tf.keras.Model):
       outputs = outputs.write(i, output)
     return tf.transpose(outputs.stack(), [1, 0, 2]), state
 ```
+# 08-02
+## [Effective Tensorflow2(下)](https://www.tensorflow.org/guide/effective_tf2)
+---
+
+### **8.New-style metrics and losses**
+指标Metrics和损失Losses在keras中都是由@tf.function装饰的object。
+
+一个Loss对象是callable的(仿函数的概念),(y_ture,y_pred)作为输入参数。例如：
+
+``` python
+cce = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+cce([[1, 0]], [[-1.0,3.0]]).numpy()
+
+4.01815
+```
+
+我们可以使用Metrics来收集和展示训练过程中产生的数据。
+
+使用`tf.metrics`收集数据 and 使用 `tf.summary` 将数据打印出来。使用`上下文管理器`可将数据重定向到本地文件，即把日志信息写入本地文件中。
+
+``` python
+summary_writer = tf.summary.create_file_writer('/tmp/summaries')
+with summary_writer.as_default():
+  tf.summary.scalar('loss', 0.1, step=42)
+```
+
+在输出summarys之前，首先需要使用tf.metrics收集数据。Metric是有状态的，它们在一个epoch(训练周期)中将数据收集，调用`result`方法将返回Metrics中数据的累计和的平均值,比如Mean.result()。
+
+使用Metric.reset_states()将Metric中的数据情况，通常该函数的调用发生在一个epoch结束。
+
+``` python 
+def train(model, optimizer, dataset, log_freq=10):
+  avg_loss = tf.keras.metrics.Mean(name='loss', dtype=tf.float32) # avg_loss是一个"Mean"指标器，用于记录平均的loss
+  for images, labels in dataset:
+    loss = train_step(model, optimizer, images, labels)
+    avg_loss.update_state(loss) # 每train_step一次，就loss累加到avg_loss中
+    if tf.equal(optimizer.iterations % log_freq, 0):
+      # train_step 10次(=log_freq)后，将loss的平均值返回
+      # tf.summary将该loss，写入本地文件(文本文件，日志log)
+      # 写完后，reset_states()重置avg_loss指标器 
+      tf.summary.scalar('loss', avg_loss.result(), step=optimizer.iterations)
+      avg_loss.reset_states()
+
+def test(model, test_x, test_y, step_num):
+  loss = loss_fn(model(test_x, training=False), test_y)
+  tf.summary.scalar('loss', loss, step=step_num)
+
+train_summary_writer = tf.summary.create_file_writer('/tmp/summaries/train')
+test_summary_writer = tf.summary.create_file_writer('/tmp/summaries/test')
+
+with train_summary_writer.as_default():
+  train(model, optimizer, dataset)
+
+with test_summary_writer.as_default():
+  test(model, test_x, test_y, optimizer.iterations)
+```
+
+利用`TensorBoard`可视化已生成的summaries。
+
+`tensorboard --logdir /tmp/summaries`,其中 --logdir 是定位、指向本地summaries文件的意思。 
+
+Use the `tf.summary` API to write summary data for visualization in `TensorBoard`. For more info, read the `tf.summary` [guide](https://www.tensorflow.org/tensorboard/migrate#in_tf_2x).
+
+**keras metric names**
+keras内置Metrics 都有一个固定的string名称，比如 'acc' = keras.Metrics.ACC。当我们在调用compile函数，传入metrics时，可以使用metrics = ['acc',...] 替代metris=[keras.Metrics.ACC()].
+
+在输出日志时，Metrics以 `{'name' ：值}`的形式输出。 
+
+例如：
+``` python
+model.compile(
+    optimizer = tf.keras.optimizers.Adam(0.001),
+    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+    metrics = ['acc', 'accuracy', tf.keras.metrics.SparseCategoricalAccuracy(name="my_accuracy")])
+history = model.fit(train_data)
+#log
+5/5 [==============================] - 1s 5ms/step - loss: 0.0963 - acc: 0.9969 - accuracy: 0.9969 - my_accuracy: 0.9969
+
+history.history.keys()
+#log
+dict_keys(['loss', 'acc', 'accuracy', 'my_accuracy'])
+```
+---
+### **9.Debugging**
+
+使用Eager模式可一步一步运行代码 inspect shapes, data types and values，即调试功能。
+
+需要注意的是，某些API，如`tf.funcion`,`tf.keras`等，使用Graph execution(tf1.0中叫静态图)，这种模式带来更好的运算表现和可移植性。
+
+如果想调试@tf.function装饰的函数，需要设置`tf.config.run_functions_eagerly(True)` 使得代码以Eager模式运行。
+
+例如：
+``` python
+@tf.function
+def f(x):
+  if x > 0:
+    import pdb
+    pdb.set_trace()
+    x = x + 1
+  return x
+
+tf.config.run_functions_eagerly(True)
+f(tf.constant(1))
+```
+
+``` python
+>>> f()
+-> x = x + 1
+(Pdb) l
+  6     @tf.function
+  7     def f(x):
+  8       if x > 0:
+  9         import pdb
+ 10         pdb.set_trace()
+ 11  ->     x = x + 1
+ 12       return x
+ 13
+ 14     tf.config.run_functions_eagerly(True)
+ 15     f(tf.constant(1))
+[EOF]
+```
+
+该用法，对于Keras模型以及其他的API也是适用的(只要它支持eager)。
+
+例如：
+``` python
+class CustomModel(tf.keras.models.Model):
+
+  @tf.function
+  def call(self, input_data):
+    if tf.reduce_mean(input_data) > 0:
+      return input_data
+    else:
+      import pdb
+      pdb.set_trace()
+      return input_data // 2
+
+
+tf.config.run_functions_eagerly(True)
+model = CustomModel()
+model(tf.constant([-2, -4]))
+
+####
+>>> call()
+-> return input_data // 2
+(Pdb) l
+ 10         if tf.reduce_mean(input_data) > 0:
+ 11           return input_data
+ 12         else:
+ 13           import pdb
+ 14           pdb.set_trace()
+ 15  ->       return input_data // 2
+ 16
+ 17
+ 18     tf.config.run_functions_eagerly(True)
+ 19     model = CustomModel()
+ 20     model(tf.constant([-2, -4]))
+```
+
+Notes:
+- `tf.keras.Model` methods such as `fit`, `evaluate,` and `predict` execute as graphs with tf.function under the hood. 在内层循环用graphs计算模式，意思是说`fit`没有被@tf.function，fit函数里面调用了`tf.function`，比如`train_step()`.
+- When using `tf.keras.Model.compile`, set `run_eagerly = True` to disable the Model logic from being wrapped in a tf.function.
+- Use `tf.data.experimental.enable_debug_mode` to enable the debug mode for `tf.data`. Read the [API docs](https://www.tensorflow.org/api_docs/python/tf/data/experimental/enable_debug_mode) for more details.
+
+---
+### **10.Do not keep tf.Tensors in your objects**
+如果一个函数内部存在创建tf.Variables的行为，那么两种执行模式 `@tf.function`和Eager模式(not wrappd in a tf.function)下，该函数的效果是不一样的。
+
+实际上，如果一个函数内部有创建tf.Variables的行为，并且被@tf.function，那么tensorflow会报错，并提示你不要这样做。
+
+当你想用tf.Variable来记录tf.function中的一些信息，把该variable定义在函数外部，比如利用class封装该变量和tf.function，self.x = tf.Variable(...)。
+
+当然也可以不用class，只需要在tf.function上文定义好tf.Variable，在函数内直接使用或定义参数传入。
+
+Always use `tf.Tensors` only for intermediate values.
+
+> End
+---
+## [DeepXDE论文阅读(1)]
+[DeepXDE- A Deep Learnin Library for Solving Differential Equations](../论文资料/DeepXDE-%20A%20Deep%20Learning%20Library%20for%20Solving%20Differential%20Equations.pdf)
+
+## 摘要
+
+近年来Deep Learning在很多应用场景下取得了非凡的成功，然而，它在求解PDEs的应用在近几年才开始时出现。
+``` Plaintext
+近几年来才开始出现神经网络求解PDEs的研究热，我认为这是有点奇怪的。Deep Learning通常指多层的神经网络结构。因为，从数学的角度看，神经网络实际是一个函数，由神经元所代表的激活函数复合而成。我们利用该函数构造目标函数loss，而所谓训练就是指`最优化(minimize) loss`。
+
+可以把Deep Learning就理解为函数逼近，神经网络就可以看做是一种强大的函数逼近器。至少从数学角度看，这样的说法是完全没有问题的。说到这里，就很自然抛出疑问：为什么不用神经网络逼近PDEs的解呢？Deep Learning方法求解PDEs在近几年才出现？
+```
+`回到论文中:`
+
+我们首先给出PINNs(physics-informed neural networks)的一个总览。PINNs将PDE"嵌入"神经网络的损失函数loss中，对模型进行训练。PINNs的算法框架很simple，并且它可以应用到不同类型的PDEs中，例如：integro-differential equations,fractional PDEs, and stochastic PDEs。更进一步，从应用角度看，PINNs求解反问题与正问题是同样简单的。我们提出了一种`基于残差的适应改进方法`来提升PINNs的训练效率。
+
+我们创建了一个python库——DeepXDE，可服务于PINNs教学和PINNs的研究。DeepXDE可解决正问题(有初边值条件和求解区域)以及反问题(有其他条件)。DeepXDE支持复数域PDEs。我们给出5个不同的算例，证明PINNs的求解能力以及DeepXDE的使用方法。
+
+
+

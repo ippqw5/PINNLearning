@@ -14,6 +14,7 @@
 
 | 日期            | 学习内容                                                     | 备注                                                         |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 8.2             | Effective Tensorflow2(下)<br />DeepXDE论文阅读(1)            | 阅读Effective Tensorflow2文档，阅读DeepXDE论文，看看大佬的优化思路，更新PINN学习记录。 |
 | 8.1             | Effective Tensorflow2(上)                                    | 阅读Effective Tensorflow2文档，更新PINN学习记录。            |
 | 7.30            | 3d-parabolic耦合pde代码优化                                  | **0730_3D_Parabolic耦合模型_优化.ipynb**<br />添加多种指标Metrics，以便观察训练过程<br />绘图优化 |
 | 7.27            | 3d-parabolic耦合pde代码编写                                  | **0727_3D_Parabolic耦合模型.ipynb**<br />(未完工部分：研究3d热力图画法ing) |
