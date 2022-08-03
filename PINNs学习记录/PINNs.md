@@ -1462,7 +1462,7 @@ Always use `tf.Tensors` only for intermediate values.
 ## [DeepXDE论文阅读(1)]
 [DeepXDE- A Deep Learnin Library for Solving Differential Equations](../论文资料/DeepXDE-%20A%20Deep%20Learning%20Library%20for%20Solving%20Differential%20Equations.pdf)
 
-## 摘要
+### 摘要
 
 近年来Deep Learning在很多应用场景下取得了非凡的成功，然而，它在求解PDEs的应用在近几年才开始时出现。
 ``` Plaintext
@@ -1479,6 +1479,93 @@ Always use `tf.Tensors` only for intermediate values.
 我们首先给出PINNs(physics-informed neural networks)的一个总览。PINNs将PDE"嵌入"神经网络的损失函数loss中，对模型进行训练。PINNs的算法框架很simple，并且它可以应用到不同类型的PDEs中，例如：integro-differential equations,fractional PDEs, and stochastic PDEs。更进一步，从应用角度看，PINNs求解反问题与正问题是同样简单的。我们提出了一种`基于残差的适应改进方法`来提升PINNs的训练效率。
 
 我们创建了一个python库——DeepXDE，可服务于PINNs教学和PINNs的研究。DeepXDE可解决正问题(有初边值条件和求解区域)以及反问题(有其他条件)。DeepXDE支持复数域PDEs。我们给出5个不同的算例，证明PINNs的求解能力以及DeepXDE的使用方法。
+
+# 08-03
+## [DeepXDE论文阅读(2)]
+[DeepXDE- A Deep Learnin Library for Solving Differential Equations](../论文资料/DeepXDE-%20A%20Deep%20Learning%20Library%20for%20Solving%20Differential%20Equations.pdf)
+
+### Introduction
+过去15年内，深度神经网络形式的深度学习发展很快。(深度学习是个很泛的概念，狭义指深度神经网络，就是有很多层的神经网络。)
+在近几年来，神经网络应用于数值计算开始出现，例如PINN。我们借助神经网络替代传统的离散化数值方法去逼近PDE的解。
+
+为了通过Deep Learning得到一个PDE的近似解，关键是需要限制神经网络，最小化PDE残差。现已有数个方法能实现这个思想。
+与传统的基于"画网格"的数值方法不同，如FEM、FDM，Deep Learning通过自动微分技术，使得我们不需要画网格就能得到近似解，甚至还能够突破维数的桎梏。
+
+许多传统数值方法只能针对特定问题，而且，并不是所有的PDEs都能从已知的模型推断。而对于DeepLearning来说，自动微分技术可以避免截断误差以及变分技术的数值求积误差。PINNs还有一个特性，求解反问题与正问题的代码几乎是一样的，只需要很小的改动。
+
+Section2：
+ 简单介绍深度神经网络和自动微分。介绍PINNs的算法、逼近理论和误差分析。PINNs与FEM的对比。PINNs求解IDEs和反问题。RAR方法提升PINNs的训练效率。
+
+Section3：
+介绍如何使用DeepXDE和自定义方法。
+
+Section4：
+以5个不同的算例证明PINNS的求解能力和DeepXDE的friendly use。
+
+Section5：
+总结。
+
+### 算法&训练策略&收敛性
+2.1 Deep Neural Networks，2.2 AutomaticDifferentiation略。
+
+**2.3. Physics-Informed Neural Networks (PINNs) for Solving PDEs. **
+
+We consider the following PDE parameterized by $\lambda$ for the solution $u(\mathrm{x})$ with $\mathrm{x}=\left(x_{1}, \ldots, x_{d}\right)$ defined on a domain $\Omega \subset \mathbb{R}^{d}$ :
+(2.1) $f\left(\mathbf{x} ; \frac{\partial u}{\partial x_{1}}, \ldots, \frac{\partial u}{\partial x_{d}} ; \frac{\partial^{2} u}{\partial x_{1} \partial x_{1}}, \ldots, \frac{\partial^{2} u}{\partial x_{1} \partial x_{d}} ; \ldots ; \boldsymbol{\lambda}\right)=0, \quad \mathbf{x} \in \Omega$,
+with suitable boundary conditions
+$$
+\mathcal{B}(u, \mathrm{x})=0 \quad \text { on } \quad \partial \Omega,
+$$
+where $\mathcal{B}(u, \mathbf{x})$ could be Dirichlet, Neumann, Robin, or periodic boundary conditions. For time-dependent problems, we consider time $t$ as a special component of $\mathbf{x}$, and $\Omega$ contains the temporal domain. The initial condition can be simply treated as a special type of Dirichlet boundary condition on the spatio-temporal domain.
+
+PINN是算法流程以及网络示意图如下:
+
+<img src='./Data/PINNs.png'>
+
+<img src='./Data/PINNs1.png'>
+
+<img src='./Data/PINNs2.png'>
+
+当我们输入一个x，t后，得到u，而loss函数中的u各种导数信息，可借助自动微分技术(AD)求得。
+
+最后，我们会搜索一组参数$\theta$来最小化loss函数，这个过程就是所谓的“training”。考虑到这个loss是关于$\theta$高度非线性的和非凸的,我们通常使用梯度下降，Adam和L-BFGS方法进行最优化过程。
+
+以经验来说，对于光滑的PDEs使用L-BFGS相较于Adam能够在更少的迭代次数中取得好的解，这主要是因为L-BFGS是一种拟牛顿方法，利用到“二阶导信息”。(这点在我的parabolic耦合pde中确定有体现，我的parabolic算例刚好是解比较光滑的)
+
+而对于刚性的PDEs，L-BFGS容易陷入一个局部bad minimum。
+
+PINNs的迭代次数很大取决于PDEs的复杂性（光滑的PDEs收敛速度就比较快）。使用自适应的激活函数能够加速训练，并且可能remove bad local minima。
+
+与传统数值方法不同，PINNs对解的唯一性没有保证，因为PINNs的解是通过解决非凸优化问题，这通常来说是没有唯一解的。在实践中，我们需要跳转人工的变量，e.g. 网络结构和规模大小，学习率，残差点的数量等待。通常，网络规模大小取决于PDEs解的光滑性。例如，一个小型的网络(只有几个层，每层神经元数量也不多)就足以求解1-D的Poisson方程。而对于1D的Burgers方程，我们就需要更多的层(deeper)和神经元个数(wider)
+
+对于不同的初始值$\theta$,PINNs可能收敛到不同的解，一种策略是随机初始化多次进行训练，选择loss最小的网络作为解。
+
+PINNs的原始版本，也就是上面讨论的PINNs，实际上我们是将边界条件作为“软约束(加入loss)”，这种方法能够应用于任何形状的边界条件以及复数域。从另一个方面来说，对于一些简单的边界条件，实际上我们可以令边界条件变成“强约束”。例如，当边界条件是$u(0)=u(1)=0 \ with \Omega=[0,1]$,可以将解设置为 $\hat{u(x)}=x(x-1)N(x)$，自动满足边界条件，$N(x)$是一个神经网络。
+
+对于残差点$\tau$的选择具有灵活多样性，下面提供三种策略：
+1. 在训练开始前就指定残差点，可以是网格点或者随机选取。而且在训练过程中不再改变它们。
+2. 每次优化迭代，都重新随机选择一批残差点。
+3. 在训练过程中，动态地调整残差点的位置,subsection2.8。 
+
+<img src="./Data/PINNs3.png">
+
+**2.4 Appoximation Theroy and Error Analysis for PINNs**
+下面是一些对PINNs理论性分析。
+
+对于PINNs，我们关心的最根本的问题是：是否存在神经网络能同时满足边界条件和PDE方程，i.e. 是否存在神经网络能同时且一致地逼近一个函数及其偏导数。
+
+<center>
+    <img src="./Data/PINNs4.png" width="70%">,
+    <img src="./Data/PINNs5.png" width="70%">
+    <br/>
+<center>
+
+<figure class="half">
+    <img src="./Data/PINNs6.png" width="80%">,
+    <img src="./Data/PINNs7.png" height="100%" width="100%">
+    <br/>
+<figure>
+
 
 
 
