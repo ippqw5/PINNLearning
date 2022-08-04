@@ -1549,7 +1549,7 @@ PINNs的原始版本，也就是上面讨论的PINNs，实际上我们是将边�
 
 <img src="./Data/PINNs3.png">
 
-**2.4 Appoximation Theroy and Error Analysis for PINNs**
+**2.4 PINNs的逼近理论与误差分析**
 下面是一些对PINNs理论性分析。
 
 对于PINNs，我们关心的最根本的问题是：是否存在神经网络能同时满足边界条件和PDE方程，i.e. 是否存在神经网络能同时且一致地逼近一个函数及其偏导数。
@@ -1558,14 +1558,95 @@ PINNs的原始版本，也就是上面讨论的PINNs，实际上我们是将边�
     <img src="./Data/PINNs4.png" width="70%">,
     <img src="./Data/PINNs5.png" width="70%">
     <br/>
-<center>
+</center>
 
-<figure class="half">
+定理2.1由Pinkus提出，描述了单隐藏层的神经网络的函数表示能力。一言以蔽之，足够多神经元的神经网络，能够同时且一致地逼近一个函数及其偏导数。然而，在实际应用中，神经网络的大小总是有限的。假设$\mathcal{F}$ 
+表示某个神经网络能表示的全体函数，通常来说u不太可能属于$\mathcal{F}$,
+定义 $u_{ \mathcal{F}} = arg min_{f \in \mathcal{F}}||f-u||$,$u_{ \mathcal{F}}$是最接近u的函数，就像下图展示的那样。
+
+而我们是在训练集上优化神经网络，定义$u_{\tau} = arg min_{f \in \mathcal{F}} \mathcal{L}(f;\tau)$作为神经网络在训练集上的最优解。为了简单，我们假设$u,u_{\mathcal{F}},u_{\tau}$都具有唯一性和良定的。而我们训练过程中的计算是复杂的，通常只能返回一个$u_{\tau}$的近似解
+$u_{\hat{\tau}}$。
+
+如下图所指，我们可以解构整体总体误差$\epsilon$为三个部分。
+
+<center>
     <img src="./Data/PINNs6.png" width="80%">,
     <img src="./Data/PINNs7.png" height="100%" width="100%">
     <br/>
-<figure>
+</center>
+
+近似误差$\mathcal{E}_{app}$衡量的是$u_{\mathcal{F}}$近似$u$的程度。泛化误差$\mathcal{E}_{gen}$由训练集中残差点的数量/位置和$\mathcal{f}$族的容量决定。神经网络规模越大，其近似误差越小，但泛化误差越大，这被称为偏差-方差权衡。当泛化误差占主导地位时，会发生过拟合。此外，优化误差$\mathcal{E}_{opt}$来源于损失函数的复杂性和优化设置，如学习率和迭代次数。然而，目前还没有关于PINNs的误差估计，甚至对监督学习的三种误差进行量化仍然是一个开放的研究问题[36,35,25]。
 
 
+---
 
+# 08-04
+## [DeepXDE论文阅读(3)]
+[DeepXDE- A Deep Learnin Library for Solving Differential Equations](../论文资料/DeepXDE-%20A%20Deep%20Learning%20Library%20for%20Solving%20Differential%20Equations.pdf)
+
+### **2.5 PINNs与FEM的比较**
+<center>
+    <img src="./Data/PINNs8.png" width="80%">
+</center>
+
+- 在FEM中，我们用一个分段多项式来近似解u，而在PINNs中，我们构造一个神经网络作为替代模型，参数由权重和偏差。
+
+- FEM通常需要网格生成，而PINNs是完全无网格的，我们可以使用网格或随机点。
+
+- FEM利用刚度矩阵和质量矩阵将偏微分方程转化为代数系统，而PINN则将偏微分方程和边界条件嵌入到损失函数中。
+
+- 在最后一步，有限元中的代数系统是用线性解算器精确求解的，而PINNs中的网络是用基于梯度的优化器学习的。
+
+
+在根本上不同的是，PINNs提供了函数及其导数的非线性逼近，而FEM表示线性逼近。
+
+### **2.6 PINNs求解积分微分方程**
+
+在求解积分微分方程(IDEs)时，我们仍然使用自动微分技术来解析地导出整数阶导数，而我们使用经典方法来数值逼近积分算子，如高斯求积。因此，我们引入了第四个误差分量，即离散化误差$\mathcal{E}_{dis}$，这是由高斯求积近似得到的。
+
+For example, when solving
+$$
+\frac{d y}{d x}+y(x)=\int_{0}^{x} e^{t-x} y(t) d t
+$$
+we first use Gaussian quadrature of degree $n$ to approximate the integral
+$$
+\int_{0}^{x} e^{t-x} y(t) d t \approx \sum_{i=1}^{n} w_{i} e^{t_{i}(x)-x} y\left(t_{i}(x)\right)
+$$
+and then we use a PINN to solve the following PDE instead of the original equation:
+$$
+\frac{d y}{d x}+y(x) \approx \sum_{i=1}^{n} w_{i} e^{t_{i}(x)-x} y\left(t_{i}(x)\right)
+$$
+
+PINNs can also be easily extended to solve FDEs and SDEs , but we do not discuss such cases here due to page limit constraints.
+
+<center>
+    <img src="./Data/PINNs9.png" width="80%">
+</center>
+
+### **2.7 PINNs求解反问题**
+反问题通常是指，在PDEs中有未知的参数$\lambda$,相对地，我们拥有一些额外的信息，比如指定某个子区域$\mathcal{T}_i$的解或者相关信息。
+
+PINNs求解反问题，实际上与求解正问题是一样的，我们只需要在模型中新增$\lambda$变量，根据额外的信息在loss函数中增项，并在训练过程中一起优化$\theta 和\lambda$即可。
+
+$$
+\mathcal{L}(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T})=w_{f} \mathcal{L}_{f}\left(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T}_{f}\right)+w_{b} \mathcal{L}_{b}\left(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T}_{b}\right)+w_{i} \mathcal{L}_{i}\left(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T}_{i}\right)
+$$
+where
+$$
+\mathcal{L}_{i}\left(\theta, \lambda ; \mathcal{T}_{i}\right)=\frac{1}{\left|\mathcal{T}_{i}\right|} \sum_{\mathbf{x} \in \mathcal{T}_{i}}\|\mathcal{I}(\hat{u}, \mathrm{x})\|_{2}^{2}
+$$
+We then optimize $\boldsymbol{\theta}$ and $\boldsymbol{\lambda}$ together, and our solution is $\boldsymbol{\theta}^{*}, \boldsymbol{\lambda}^{*}=\arg \min _{\boldsymbol{\theta}, \boldsymbol{\lambda}} \mathcal{L}(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T})$.
+
+### **2.8 基于残差的自适应优化(RAR)**
+
+正如我们在2.3小节中所讨论的，残差点$\mathcal{T}$通常在定义域内随机分布。这在大多数情况下都可以很好地工作，但是对于某些显示具有陡峭梯度的解决方案的偏微分方程来说，这可能不是有效的。以Burgers方程为例;直观地说，我们应该在锋面附近放置更多的点，以便更好地捕捉到不连续性。然而，一般来说，对于解未知的问题，设计一个好的剩余点分布是具有挑战性的。为了克服这一挑战，我们提出了一种基于残差的自适应细化(RAR)方法，以改善训练过程中残差点的分布，在概念上类似于有限元细化方法。
+
+RAR的思想是：
+在PDE残差更大的位置上添加更多的残差点，我们反复加点，直到整个区域内的残差的平均值小于一个阈值。
+
+算法流程图如下：
+
+<center>
+    <img src="./Data/PINNs10.png" width="80%">
+</center>
 

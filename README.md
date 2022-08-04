@@ -16,6 +16,7 @@
 
 | 日期            | 学习内容                                                     | 备注                                                         |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 8.4             | DeepXDE论文阅读(3)                                           | 完结DeepXDE论文，更新PINN学习记录。                          |
 | 8.3             | DeepXDE论文阅读(2)                                           | 阅读DeepXDE论文，更新PINN学习记录。                          |
 | 8.2             | Effective Tensorflow2(下)<br />DeepXDE论文阅读(1)            | 阅读Effective Tensorflow2文档，阅读DeepXDE论文，看看大佬的优化思路，更新PINN学习记录。 |
 | 8.1             | Effective Tensorflow2(上)                                    | 阅读Effective Tensorflow2文档，更新PINN学习记录。            |
