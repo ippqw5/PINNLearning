@@ -38,7 +38,7 @@ def set_axes3D(axes:Axes3D,title:str):
         axis = 'both',
         which = 'major',
         direction = 'out',
-        length = 1.0,
+        length = 1.0, 
         labelsize = 'small', #刻度标签的文字大小
     )
     # axes.xaxis.set_major_formatter('{x:.1f}s') # 还是不加单位了
