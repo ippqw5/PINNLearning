@@ -1,20 +1,16 @@
 # 耦合PINN、正反问题、3D问题的学习研究
 
-
-
-# 06-29 
+# 06-29
 
 ### 什么是PINN？
 
-Raissi等人在2018年 
+Raissi等人在2018年
 
- [Physics-informed neural networks: A deep learning 
-framework for solving forward and inverse problems involving 
+ [Physics-informed neural networks: A deep learning
+framework for solving forward and inverse problems involving
 nonlinear partial differential equations](https://github.com/maziarraissi/PINNs)
 
-中提出了PINN，通过在损耗函数中结合物理场（即偏微分方程）和边界条件来解决偏微分方程。损失是偏微分方程的均方误差和在分布在域中的“搭配点”上测量的边界残差。
-
-
+中提出了PINN，通过在损耗函数中结合物理场（即偏微分方程）和边界条件来解决偏微分方程。损失函数是偏微分方程分布在域中的“搭配点”的均方误差和边界残差之和。
 
 他们在文章中列出了数个经典pde算例来验证PINN的正确性。在他们的github主页上提供了源码，使用了Tensorflow1.x的框架。
 
@@ -22,17 +18,13 @@ nonlinear partial differential equations](https://github.com/maziarraissi/PINNs)
 
 我在github上找到一个了PINN在TensorFlow2.x上的代码框架 [omniscientoctopus/Physics-Informed-Neural-Networks: Investigating PINNs (github.com)](https://github.com/omniscientoctopus/Physics-Informed-Neural-Networks),
 
-
-
 ### 本文研究什么？
 
-利用暑假研究一下如下问题： 
+利用暑假研究一下如下问题：
 
 - PINN模型在耦合问题上的应用（这方面的研究似乎还不多），
 - PINN正负问题求解（看了一些文章说PINN的优势其实在于 **高维问题 & 反问题求解**
 - 使用tensorflow2.0，代码实现若干算例（也许可能maybe Only one😁），最好能把模型应用到3维。
-
-
 
 ### PINN模型搭建
 
@@ -54,16 +46,16 @@ def createModel(layer):
     for i in range(1,len(layer)-1):
         model.add(layers.Dense(layer[i], activation="relu", name="layer{}".format(i)))
     model.add(layers.Dense(layer[-1], name="outputs"))
-    
+  
     #  model.compile( loss= , metrics = [], optimizer= )
     #	...
     #
     #
-    
+  
     return model
 ```
 
-**<font color='purple'>后续要为 model 添加 loss（PINN主要部分）、metric（可以不要）、optimizer（优化器，必要）</font>**
+**`<font color='purple'>`后续要为 model 添加 loss（PINN主要部分）、metric（可以不要）、optimizer（优化器，必要）`</font>`**
 
 > 以上内容于 2022 -  06 - 29  markdown。
 
@@ -71,19 +63,15 @@ def createModel(layer):
 
 # 06-30
 
-### <font color='blue'>1.PINN模型搭建（续）</font>
+### `<font color='blue'>`1.PINN模型搭建（续）`</font>`
 
 TensorFlow为我们提供了多种多样的高阶API帮助我们快速搭建模型。**但是，快速方便的代价就是灵活性降低。**特别是PINN跟一般的机器学习模型训练步骤不同，主要来源于loss function需要对预测值进行求导运算。
 
 今天的代码编写遭遇了一些困难，我昨天的构思实际上不可行：
 
 1. 使用 **tf.keras.Sequential()**或者**tf.keras.Model()函数式API** 搭建模型 Model。(这一步没问题）
-
 2. 编写自定义loss函数，然后将 自定义的loss & 优化器 & metrics 传入自带的方法 **Model.compile()**
-
 3. 调用自带的方法 **Model.fit()** ，传入训练数据训练即可。
-
-
 
 步骤1 和 （步骤2，步骤3）是相对独立的。而PINN模型结构简单，使用步骤1搭建模型完全没有问题。
 
@@ -92,8 +80,6 @@ TensorFlow为我们提供了多种多样的高阶API帮助我们快速搭建模�
 让我们先来看看其中两个关键的方法 **Model.compile() & Model.fit()** 方法究竟做了什么？
 
 如果明白了Model.fit()的工作步骤，就会知道这种自带的训练方式局限性，以及为什么在训练PINN模型时，我们需要自定义训练过程。
-
-
 
 **Model.fit()大致工作流程如下：**
 
@@ -107,7 +93,7 @@ def fit(self,X_train,Y_train,epoches,batch_size,**kwargs):
             train_step((x_batch,y_batch))  ## train_step(self,data) 是 类中的方法，可以重载，从而改变fit()
 
 def train_step(self,data):
-    
+  
     # Unpack the data. Its structure depends on your model and on what you pass to `fit()`.
     x, y = data
 
@@ -116,7 +102,7 @@ def train_step(self,data):
         loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
         #这里用到的 self.compiled_loss() 就是 Model.compile(loss) 传入的loss
         #即 Model.compile() 作用是让 self.compiled_loss = loss
-                       
+                     
 	# Compute gradients
     trainable_vars = self.trainable_variables
     gradients = tape.gradient(loss, trainable_vars)
@@ -125,12 +111,10 @@ def train_step(self,data):
 
     # Update weights
     self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-    
+  
     #指标计算（可选）
     #....
 ```
-
-
 
 可以看到 **Model.fit()**只是为我们定义一个一般普通的训练步骤函数，并没有什么特殊。
 
@@ -142,19 +126,11 @@ loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 
 上述代码中compiled_loss()限定了参数 y , y_pred。y是标签值，y_pred是通过模型预测的值。
 
-
-
-
-
 这也是为什么官方文档、网上的帖子说：
 
 **如果想自定义loss，那么你自定义的loss函数一定要有两个输入参数（y，y_pred)。**
 
 **因为在 fit() ——》train_step()中，调用了self.compiled_loss()，并规定了它的参入参数为（y,y_pred)**。
-
-
-
-
 
 当然，我们可以重载 train_step() 使自定义loss函数自由度更高，并仍能使用fit()。
 
@@ -162,9 +138,7 @@ loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 
 **因为我们有不同格式的训练数据（带标签和不带标签）、复杂的loss函数（不仅仅需要y，y_pred，还需要y_pred对x，t的导数），所以在这种情况下，仍然使用fit（）代码框架，需要大刀阔斧地修改。还不如自己写训练过程，不去使用所谓的高阶API~~**
 
-
-
-### <font color='blue'>2.子类化Sequential() / Model() , 定义 MyPinn，自定义训练过程</font>
+### `<font color='blue'>`2.子类化Sequential() / Model() , 定义 MyPinn，自定义训练过程`</font>`
 
 之前讨论过**步骤1：使用Sequential搭建模型** 是没有问题的，我们需要做的仅仅是重新定义**训练过程**。
 
@@ -173,10 +147,10 @@ loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 ```python
 class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
     def __init__(self,name = None):
-        
+      
         super(MyPinn, self).__init__(name=name)
         self.nu = tf.constant(0.01/np.pi)
-    
+  
     @tf.function
     def test_gradient(self,X_f_train):
         x = X_f_train[:,0]
@@ -187,14 +161,14 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
             u = self(X)
         u_x = tape.gradient(u,x)
         tf.print(u_x)
-    
+  
     @tf.function
     def loss_U(self,X_u_train,u_train):
         u_pred = self(X_u_train)
         loss_u = tf.reduce_mean(tf.square(u_train - u_pred))
         return loss_u
-    
-    
+  
+  
     @tf.function
     def loss_PDE(self,X_f_train):
         x = X_f_train[:,0]
@@ -203,54 +177,52 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
             tape.watch([x,t])
             X = tf.stack([x,t],axis=-1)
             u = self(X)  
-            u_x = tape.gradient(u,x)         
-            
-        u_t = tape.gradient(u, t)     
+            u_x = tape.gradient(u,x)       
+          
+        u_t = tape.gradient(u, t)   
         u_xx = tape.gradient(u_x, x)
-        
+      
         del tape
-        
+      
         f = u_t + (self(X_f_train))*(u_x) - (self.nu)*u_xx
 
         loss_f = tf.reduce_mean(tf.square(f))
 
         return loss_f
-    
-    
+  
+  
     def loss_Total(self,X_u_train,u_train,X_f_train):
         loss_u = self.loss_U(X_u_train,u_train)
         loss_f = self.loss_PDE(X_f_train)
-        
+      
         loss_total = loss_u + loss_f
-        
+      
         return loss_total
-    
+  
     @tf.function
     def train_step(self,X_u_train,u_train,X_f_train):
         with tf.GradientTape(persistent=True) as tape:
             loss_total = self.loss_Total(X_u_train,u_train,X_f_train)
-                   
+                 
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss_total, trainable_vars)
-        
+      
         del tape
-        
+      
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         return loss_total
-    
+  
     def train_model(self, X_u_train,u_train,X_f_train, epochs=100):
         for epoch in tf.range(1,epochs+1):
             loss_total = self.train_step(X_u_train,u_train,X_f_train)
-            if epoch % 10 == 0:                
+            if epoch % 10 == 0:              
                 print(
                     "Training loss (for per 10 epoches) at epoch %d: %.4f"
                     % (epoch, float(loss_total))
                 )
 ```
 
-
-
-<font color='purple'> **在当前文件夹 myPINN.py 进行了train_model测试，成功运行**</font>
+`<font color='purple'>` **在当前文件夹 myPINN.py 进行了train_model测试，成功运行**`</font>`
 
 > 以上内容截止至 6-30 markdown
 
@@ -258,11 +230,9 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
 
 # 07-01
 
-### <font color='blue'>优化器</font>
+### `<font color='blue'>`优化器`</font>`
 
 tf.keras.optimizers为我们提供了许多现成的优化器，比如SGD（最速下降）、Adam、RMSprop等等。
-
-
 
 假设，现有模型对象 MyPinn。
 
@@ -271,15 +241,15 @@ tf.keras.optimizers为我们提供了许多现成的优化器，比如SGD（最�
 tf.keras.optimizers.Optimizer()主要提供了两种Methods，为我们的参数进行优化。
 
 1. **apply_gradients(**
-       **grads_and_vars, name=None, experimental_aggregate_gradients=True**
+   **grads_and_vars, name=None, experimental_aggregate_gradients=True**
    **)**
 
-​	之前定义的MyPinn.train_step()中就使用了这种Method。
+    之前定义的MyPinn.train_step()中就使用了这种Method。
 
-​	我们先计算出grads，再使用apply_gradient()，进行参数优化。
+    我们先计算出grads，再使用apply_gradient()，进行参数优化。
 
 2. **minimize(**
-       **loss, var_list, grad_loss=None, name=None, tape=None**
+   **loss, var_list, grad_loss=None, name=None, tape=None**
    **)**
 
    minimize()方法先使用tf.GradientTape()计算出loss，再调用apply_gradients()。相当于把compute gradients和apply gradients 封装在一起。
@@ -288,9 +258,7 @@ tf.keras.optimizers.Optimizer()主要提供了两种Methods，为我们的参数
 
 **为了精准地控制优化过程，并在优化过程中加上一些别的操作，我们使用 第1种方法 对参数进行优化。**
 
-
-
-### <font color='blue'>  Adam & L-BFGS </font>
+### `<font color='blue'>`  Adam & L-BFGS `</font>`
 
 Adam优化器在deep neural network中具有广泛的应用。之前也说过，tf.keras.optimizers里内置了Adam优化器，我们直接调用就好。
 
@@ -298,13 +266,7 @@ Adam优化器在deep neural network中具有广泛的应用。之前也说过，
 
 在 training model 过程中，他们先使用 Adam 进行优化，后使用 L- BFGS 进行优化。
 
-
-
 L-BFGS 是 秩2的拟牛顿方法(这学期 “最优化方法” 课上刚好学过)，它是基本牛顿方法的一种变形。牛顿方法在极值点附近时，收敛速度快，而拟牛顿方法在保持这个优秀性质的基础上，改进了牛顿方法过程的一些缺点，比如计算二阶导、矩阵求逆和G不正定等问题。
-
-
-
-
 
 然而在TensorFlow1.x中 并没有内置的 L-BFGS，作者实际是使用tensoflow1.x 提供的一个接口，使用 Scipy 库中的 L-BFGS。
 
@@ -327,8 +289,6 @@ where `x` **is a 1-D array with shape (n,)** and `args` is a tuple of the fixed 
 
 > 当 jac = True 时， fun()  retrun fval , gradients
 
-
-
 这时，再看一下作者调用L-BFGS的代码，就知道是什么意思了。。
 
 ```python
@@ -343,8 +303,6 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
 
 这时如果我们写 self.optimizer.minimize() 实际上就会调用 scipy.optimize.minimize( args ) ，args=上述代码中传入的参数，self.loss 相当于 fun。
 
-
-
 遗憾的是，在TensorFlow2.x中，该接口已经删除。
 
 当然我们仍能想办法使用Scipy中的L-BFGS，
@@ -353,33 +311,23 @@ self.optimizer =tf.contrib.opt.ScipyOptimizerInterface (self.loss,
 
 作为scipy.optimize.miminze(fun,...)中的fun，但这意味着需要把MyPinn的weights和bias "扁平化" 放在一个1维数组中，在优化完毕后，还要把结果再变成原来的形状，放回MyPinn里。
 
-
-
 又但是，虽然接口没了，但TensorFlow2.0中 tfp 库中有实现 L-BFGS 算法。😁
-
-
 
 **下面链接中，高赞回答讨论了在TensorFlow2.x中使用 Scipy的L-BFGS 和 自带的L-BFGS 计算差别。**
 
 [python - Use Scipy Optimizer with Tensorflow 2.0 for Neural Network training - Stack Overflow](https://stackoverflow.com/questions/59029854/use-scipy-optimizer-with-tensorflow-2-0-for-neural-network-training)
 
-<img src="./Data/L-BFGS in scipy and tfp.png" />
-
-
+`<img src="./Data/L-BFGS in scipy and tfp.png" />`
 
 **可以发现使用TensorFlow2.0 tfp中的L-BFGS计算速度更快**
 
 **不过tfp中的L-BFGS计算结果略逊于Scipy中的L-BFGS，可能是TensorFlow默认float32，而Scipy是float64，以及Scipy中L-BFGS算法的实现比tfp的更好。**
 
-
-
-[Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
+[Optimize TensorFlow &amp; Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
 
 注意如果想使用tfp的L-BFGS也是要求输入变量是1-D的。而我们的PiNN模型中的weights和bias都是以多维的形式保存，所以要先将它们进行“扁平化”，再传入L-BFGS函数中。
 
 上面的链接讨论了如何定义将model中的变量“扁平化”，变回来 以及 如何定义“function_factory"返回一个LBFGS需要的function。
-
-
 
 我们看下tfp中L-BFGS的调用格式：
 
@@ -406,59 +354,48 @@ tfp.optimizer.lbfgs_minimize(
 <font color='purple' >**对MyPinn模型(keras.Sequential模型)使用tfp L-BFGS()进行参数优化流程如下：** </font>
 
 1. 提取MyPinn中的weights 和 bias (即需要优化的parameters)，此时它们就是initial_position(未扁平化)。
-
 2. 创建两个列表 idx=[],part=[]
-
 3. 把MyPinn每层参数的shape等若干信息，用循环append到idx和part。
 
    idx帮助我们调用 tf.dynamic_stitch()将weights和bias"扁平化"成params_1d。
 
    part帮助我们params_1d变回weights和bias,并更新MyPinn中的参数。
-
 4. 定义一个func函数,func(params_1d)
 
-​		Input:  params_1d
+    Input:  params_1d
 
-​		Output: loss , gradients
+    Output: loss , gradients
 
-​		Inside：先把 params_1d 转变回 MyPinn 中 weights,bias 的shape，并更新它们。
+    Inside：先把 params_1d 转变回 MyPinn 中 weights,bias 的shape，并更新它们。
 
-​					  使用MyPinn中已定义的loss_Total()方法计算loss 和 gradients。
+    使用MyPinn中已定义的loss_Total()方法计算loss 和 gradients。
 
-​				      注意：需要将 gradients 也扁平化 再return。( gradients.shape = [weights,bias].shape,故也可以用idx扁平化 )
+    注意：需要将 gradients 也扁平化 再return。( gradients.shape = [weights,bias].shape,故也可以用idx扁平化 )
 
-5.  将第一步提取出来的weights 和 bias 扁平化处理，作为initial_position
+5. 将第一步提取出来的weights 和 bias 扁平化处理，作为initial_position
 6. 调用tfp.optimizer.lbfgs_minimize(func,initial_position)即可！
 
 > 以上内容截止至 7-1 markdown
 
 ---
 
-
-
 # 07-04
 
-​	今天主要添加了 Data Preparation 和 Plot 的代码。并且，按日期命名，将代码分开在不同的NoteBook。
+    今天主要添加了 Data Preparation 和 Plot 的代码。并且，按日期命名，将代码分开在不同的NoteBook。
 
-​    使用下面链接中的训练数据。
+    使用下面链接中的训练数据。
 
-​	[Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
+    [Optimize TensorFlow &amp; Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
 
-​	不过，我在使用MyPinn训练Burgers Equation，训练结果不太理想。一开始，我怀疑是，float32格式 **And** tfp中lbfgs与Scipy中lbfgs的差别。debug了很久，发现不是这些原因。
+    不过，我在使用MyPinn训练Burgers Equation，训练结果不太理想。一开始，我怀疑是，float32格式**And** tfp中lbfgs与Scipy中lbfgs的差别。debug了很久，发现不是这些原因。
 
-​	因为上面的链接中，作者也有用tfp中的lbfgs训练模型，我运行了一遍，仍然可以达到很好的效果，看来还需要debug(恼。
+    因为上面的链接中，作者也有用tfp中的lbfgs训练模型，我运行了一遍，仍然可以达到很好的效果，看来还需要debug(恼。
 
-
-
-​	题外话，使用Google colab可以白嫖算力，将.ipynb文件上传，可以在云端计算，还免费，而且我的电脑内存有时候不太够用，所以colab就很nice。
-
-
+    题外话，使用Google colab可以白嫖算力，将.ipynb文件上传，可以在云端计算，还免费，而且我的电脑内存有时候不太够用，所以colab就很nice。
 
 > 以上内容截止至 7-4 markdown
 
 ---
-
-
 
 # 07-05 Debug
 
@@ -468,7 +405,7 @@ tfp.optimizer.lbfgs_minimize(
 
 **在解释bug之前**，我需要说明一下，为什么我自己要用构建一套TensorFlow2.x的Pinn class，而不是用别人的。
 
-[Optimize TensorFlow & Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
+[Optimize TensorFlow &amp; Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
 
 **为方便说明，我将上述链接中的pinn代码称为 code**。
 
@@ -477,7 +414,6 @@ tfp.optimizer.lbfgs_minimize(
    而 **code**，没有使用TensorFlow2.0的@tf.function功能。
 
    这是原因一。
-
 2. **高阶API**。tf.keras已经为我们提供了各种层、优化器、损失函数等 以及 **2种主要构建模型的方式**：Sequential()，函数式API。灵活使用函数式API，理论上可以构建任何模型，不单单是神经网络。而Pinn使用Sequential()即可。比如，我的代码就是让MyPinn继承keras.Sequential
 
    而在**code**中，Pinn继承的是keras.Module，Module实际上是Sequential等高阶API的基类，它提供的功能是记录在类中出现的Variables，而没有Sequential中更多好用方便的功能，比如直接使用add方法，搭配keras.layers.Dense，为MyPinn添加层(本质上也是添加Variables)。
@@ -485,28 +421,23 @@ tfp.optimizer.lbfgs_minimize(
    若使用**code**中的方法，让Pinn单单继承Module，则需要自己做变量初始化，并且没有别的好用的功能。它只能记录class中出现的变量而已。
 
    这是原因二。
-
 3. **优化器**。在code中为了使用LBFGS，在类中定义了 “变量一维化、一维变量转为原来形状”等 专门为使用LBFGS的函数。我不喜欢这样子。
 
    **为了清晰性，我更倾向于将模型定义和优化方法分离开，而不是全在写在class中。**
 
-    “变量一维化、一维变量转为原来形状”这样的函数，只是为使用LBFGS服务的，他应该定义在外面。如果使用内置的Adam、SDG等优化器，完全不需要定义这些函数，直接在train_step()中，optimizer.apply_gradient（）即可。
+   “变量一维化、一维变量转为原来形状”这样的函数，只是为使用LBFGS服务的，他应该定义在外面。如果使用内置的Adam、SDG等优化器，完全不需要定义这些函数，直接在train_step()中，optimizer.apply_gradient（）即可。
 
    这是原因三。
-
-
 
 所以bug出现在哪呢？@tf.function 编程不规范？ 变量名写错？
 
 **在loss_PDE的定义中。**
 
-
-
 下面我分别给出我自己的定义以及code的定义
 
 ```python
 def loss_PDE(self,X_f_train): #我的定义
-    
+  
       x = X_f_train[:,0]  # x.shape =(nums,)
       t = X_f_train[:,1]  # t.shape =(nums,)
       with tf.GradientTape(persistent=True) as tape:
@@ -518,7 +449,7 @@ def loss_PDE(self,X_f_train): #我的定义
 
 ```python
 def loss_PDE(self,X_f_train): #code的定义
-      
+    
       x = X_f_train[:,0:1] # x.shape = (nums,2)
       t = X_f_train[:,1:2] # t.shape = (nums,2)
       with tf.GradientTape(persistent=True) as tape:
@@ -545,15 +476,11 @@ tape.watch([x,t])将x，t也记录到tape中，因为默认只记录variables，
 
 可以试一下改用u=self(X_f_train)，那么u_x返回的None。
 
-
-
 令人我感到奇怪的是，两种代码的第7步，最后返回的X是一样的，为什么只有第二种（code的实现）OK？而我的就不行。
 
 其实我在写代码的时候，参考了code的loss_PDE，觉得他的操作有点**多余**，就用了一种更清楚的写法，正如第一种写法那样，然而训练的结果就是，第一种不行！？
 
-
-
-**下面我再验证一下两种写法的(第7行)X是否一致?** 
+**下面我再验证一下两种写法的(第7行)X是否一致?**
 
 <img src="./Data/bug.png" style="zoom:75%;" />
 
@@ -573,42 +500,33 @@ tape.watch([x,t])将x，t也记录到tape中，因为默认只记录variables，
 
 <img src='./Data/NN_structures.png' style="zoom:50%;"  >
 
-
-
 **目前PINN大多为全连接前向网络(tensorflow中的Dense层)，尝试使用如卷积层、循环网络、反馈网络？**
-
-
 
 ### 神经网络对边界条件的处理方式
 
 ANN: artificial neural network
 
 1. **纯网络型**
-1. 1  Loss = $\lambda_1 * MSE_{pde} + \lambda_2 * MSE_{BC}$  ， 原始的PINN模型就使用的是这种方式，利用边界条件和预测值计算$MSE_{BC}$,纳入loss中。
-   
-1. 2  将边界条件带入神经网络表达式——取代部分weights，通过微分方程残差$MSE_{pde}$优化剩余权值。如下图所示：
+2. 1  Loss = $\lambda_1 * MSE_{pde} + \lambda_2 * MSE_{BC}$  ， 原始的PINN模型就使用的是这种方式，利用边界条件和预测值计算$MSE_{BC}$,纳入loss中。
+3. 2  将边界条件带入神经网络表达式——取代部分weights，通过微分方程残差$MSE_{pde}$优化剩余权值。如下图所示：
 
 <img src='./Data/BC_solution1.png' style="zoom:70%;" >
 
-​			**但我认为，对于某一个复杂pde，代码实现这种思想并不容易。**
+    **但我认为，对于某一个复杂pde，代码实现这种思想并不容易。**
 
 2. **边界吸收型**
 
-​	边界吸收型的思想是：把神经网络看做函数 ANN(X)；构造边界函数BC(X)：当X∈边界时，BC为边界值，否则为0；构造 L(X)，当X∈边界时，L(X)=0.
+    边界吸收型的思想是：把神经网络看做函数 ANN(X)；构造边界函数BC(X)：当X∈边界时，BC为边界值，否则为0；构造 L(X)，当X∈边界时，L(X)=0.
 
 令试解  $y_t = BC(X) + L(X) * ANN(X) $, 此函数严格满足边界条件。再通过域内点计算$MSE_{pde}$，更新ANN。
 
-​	**BC(X),L(X)的构造方法：**
+    **BC(X),L(X)的构造方法：**
 
-​	<img src='./Data/BC_ODE.png'>
-
-
+    `<img src='./Data/BC_ODE.png'>`
 
 <img src='./Data/BC_PDE.png'>
 
 **在PDE中如何解释ANN(X)的作用？** 通用BC(X),L(X)的构造方法？
-
-
 
 进一步，使用独立网络$ANN_{BC}$代替BC(X)。
 
@@ -646,8 +564,6 @@ ANN: artificial neural network
 
 假设，方程组中某些物理参数值未知。只需要把它们设置为Variables，纳入loss，与NN的参数一起训练。
 
-
-
 不得不说，Native-stokes/Darcy耦合模型的方程组还是比较复杂的，张学长的论文中，使用2d具有解析解的算例，使用最原始的PINN模型结构求解，效果还算不错。
 
 但当问题变成3d，loss更加复杂时，并且还有一个问题，由于高阶导数的存在，使用这种最原始的PINN模型解Navier-Stokes/Darcy耦合模型，应该很慢。
@@ -658,35 +574,31 @@ ANN: artificial neural network
 
 # 07-08
 
-##  	小批量训练模式实验
+## 小批量训练模式实验
 
-​	阅读一篇论文，关于pde耦合模型的数值求解方法。
+    阅读一篇论文，关于pde耦合模型的数值求解方法。
 
-​	PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
+    PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
 
-​    试了下小批量训练。将全部训练数据 **n等分后**，进行小批量训练。在相同的epochs下，小批量训练效果比原来好。效果见"7_8_myPINN_Burgers.ipynb"
+    试了下小批量训练。将全部训练数据**n等分后**，进行小批量训练。在相同的epochs下，小批量训练效果比原来好。效果见"7_8_myPINN_Burgers.ipynb"
 
 ---
 
-# 07-11 
+# 07-11
 
 ## PINN求解parabolic耦合pde模型
 
-​	用PINN求解最简单的parabolic耦合pde模型——PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
+    用PINN求解最简单的parabolic耦合pde模型——PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
 
 <img src='./Data/公式0.png'>
 
 <img src='./Data/公式1.png'>
 
-
-
 模型定义和训练模型的代码写好了，画图的还没写。训练数据的生成代码，写的有些冗长，后面会优化一下。
 
 代码见 **7_11_Parabolic耦合pde模型.ipynb**
 
-
-
-**网络结构:** 
+**网络结构:**
 
 两个独立的神经网络$NN_1 , NN_2$，分别用于预测$u_1,u_2$, 构造 $ loss = loss_{u1} + loss_{u2} + loss_{interface}$，每次训练同时训练两个网络，耦合性体现在$loss_{interface}$.
 
@@ -698,27 +610,27 @@ ANN: artificial neural network
 
 # 07-12
 
-##  训练parabolic耦合pde的PINN模型
+## 训练parabolic耦合pde的PINN模型
 
-​	u1拟合的比较好。u2拟合效果很差，特别是在边界处。
+    u1拟合的比较好。u2拟合效果很差，特别是在边界处。
 
-​	正在研究，不知是代码有错，还是说因为u2表达式比较复杂，有y的二次项。
+    正在研究，不知是代码有错，还是说因为u2表达式比较复杂，有y的二次项。
 
-​	训练代码见  **7_11_Parabolic耦合pde模型.ipynb**
+    训练代码见**7_11_Parabolic耦合pde模型.ipynb**
 
 ---
 
-# 07-13 
+# 07-13
 
 ## **与2位学长会议交流，讨论PINN**
 
 解决了不少疑问，PINN在边界处的拟合效果确实一般。
 
-<img src = './Data/会议.png'>
+`<img src = './Data/会议.png'>`
 
 ---
 
-# 07-15—07-17 
+# 07-15—07-17
 
 ## **改进parabolic耦合pde的代码。**
 
@@ -731,17 +643,15 @@ ANN: artificial neural network
 
 效果见 **7_15_改进版Parabolic耦合pde.ipynb**
 
-
-
 ---
 
-# 07-18 
+# 07-18
 
-## 	代码 & 论文阅读
+## 代码 & 论文阅读
 
-​	学习TensorFlow2.0 Metric评估函数 ，代码见“ **tensorflow学习记录/12_Metric.ipynb**”
+    学习TensorFlow2.0 Metric评估函数 ，代码见“**tensorflow学习记录/12_Metric.ipynb**”
 
-​	阅读 [Deep Learning-An Introduction](../论文资料/Deep Learning-An Introduction.pdf )。这篇文章从数学角度，从零开始介绍Deep Learning，是一篇介绍性的文章。	
+    阅读 [Deep Learning-An Introduction](../论文资料/Deep Learning-An Introduction.pdf )。这篇文章从数学角度，从零开始介绍Deep Learning，是一篇介绍性的文章。
 
 ---
 
@@ -757,47 +667,46 @@ ANN: artificial neural network
 **预训练模式**：在训练耦合模型前，先各种单区域进行PINN训练。有利于耦合模型边界训练，以及训练效率。
 
 **自适应loss函数因子：**
+
 $$
 Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2} \\
 loss_{u1} := loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
 loss_{u2} := loss_{u2}^{bc} + loss_{u2}^{f} + loss_{u2}^{i} \\
 $$
-​	其中$\alpha_i$就是自适应因子。
 
-​	考虑到实际训练过程中，u1和u2的loss大小不一样，**”优先“**训练loss较大的一方，即在$loss_{ui}$前乘上一个较大的因子，使其在整个**$Loss$**中占比更大，从而达到优先训练的目标。
+    其中$\alpha_i$就是自适应因子。
 
-
+    考虑到实际训练过程中，u1和u2的loss大小不一样，**”优先“**训练loss较大的一方，即在$loss_{ui}$前乘上一个较大的因子，使其在整个**$Loss$**中占比更大，从而达到优先训练的目标。
 
 ### **什么是自适应权重 Self-Adaptive-Weight？**
 
-​	把$\alpha_1,\alpha_2$也看做变量。在训练模型参数的过程中，我们使用的梯度下降算法，是基于“负梯度”。
+    把$\alpha_1,\alpha_2$也看做变量。在训练模型参数的过程中，我们使用的梯度下降算法，是基于“负梯度”。
 
-​	如果使用**“正梯度”**去改变$\alpha_1,\alpha_2$，能够使得$loss_{ui}$对应的$\alpha_{i}$更大。
+    如果使用**“正梯度”**去改变$\alpha_1,\alpha_2$，能够使得$loss_{ui}$对应的$\alpha_{i}$更大。
 
-​	实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$, 
-
-
+    实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$,
 
 ### 加权策略
 
-​		对$loss_{u1} 和 loss_{u2}$ 加权的**目的**：使得损失较大的一方在整个loss中的贡献更大，使得神经网络倾向于训练损失更大的一方。
+    对$loss_{u1} 和 loss_{u2}$ 加权的**目的**：使得损失较大的一方在整个loss中的贡献更大，使得神经网络倾向于训练损失更大的一方。
 
-​		值得注意的是，如果两个神经网络之间没有联系，即 $loss_{u1}(x_1;\theta_1) , loss_{u2}(x_2;\theta_2) $的自变量$(x_1,\theta_1),(x_2,\theta_2)$之间没有重合的部分，那么对$loss_{u1} 和 loss_{u2}$ 加权实际上是没有"效果"的。
+    值得注意的是，如果两个神经网络之间没有联系，即$loss_{u1}(x_1;\theta_1) , loss_{u2}(x_2;\theta_2) $的自变量$(x_1,\theta_1),(x_2,\theta_2)$之间没有重合的部分，那么对$loss_{u1} 和 loss_{u2}$ 加权实际上是没有"效果"的。
 
-​		原因是，如果两个神经网络之间没有联系时，那么我们对 $Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2}$求关于$\theta_{1}$的导数，$\frac{\partial loss}{\partial \theta_1} =\alpha_1 *  \frac{\partial loss_{u1}}{\partial \theta_1}$，可以发现与$\theta_2$无关，即跟第二个神经网络无关，只是在训练单个神经网络而已，而对单个神经网络的loss乘以一个数，实际是没有用的，相当于对优化问题中目标函数乘上一个常数，显然不影响我们寻找最优解。
+    原因是，如果两个神经网络之间没有联系时，那么我们对$Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2}$求关于$\theta_{1}$的导数，$\frac{\partial loss}{\partial \theta_1} =\alpha_1 *  \frac{\partial loss_{u1}}{\partial \theta_1}$，可以发现与$\theta_2$无关，即跟第二个神经网络无关，只是在训练单个神经网络而已，而对单个神经网络的loss乘以一个数，实际是没有用的，相当于对优化问题中目标函数乘上一个常数，显然不影响我们寻找最优解。
 
-​		因此，此处的 $loss_{u1},loss_{u2}$具体为：
+    因此，此处的$loss_{u1},loss_{u2}$具体为：
+
 $$
 loss_{u1} := loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
 loss_{u2} := loss_{u2}^{bc} + loss_{u2}^{f} + loss_{u2}^{i} \\
 $$
+
 其中$loss_{u1}^{i}$是u1在交界处Interface 的损失函数，与u1,u2有关，即与$\theta_{1},\theta_{2}$有关，它使得两个神经网络联系在一起。当$loss_{u1}^{i}$权重更大时，模型通过梯度下降更新两个网络的参数$\theta_{1},\theta_{2}$,会更倾向于使得$loss_{u1}$更小。
-
-
 
 在实际操作中，无论是单区域的PINN和耦合的PINN，在边界处的拟合效果相较于内部的拟合效果更差。
 
 往往在$loss_u^{bc}$前乘上一个常数k，比如k=10：
+
 $$
 Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2} \\
 loss_{u1} := 10* loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
@@ -808,21 +717,18 @@ $$
 
 除了那种自适应权重 Self-Adaptive-Weight之外，我还构造了一种新的。
 
-令: 
+令:
+
 $$
 Loss^{(k)} = loss_{u1}^{(k)} + \alpha^{(k)} loss_{u2}^{(k)} ,\alpha^{(0)} = 1 \\
 
  \alpha^{(k+1)} = \frac{loss_{u2}^{(k)} }{loss_{u1}^{(k)} + eps}, 其中 eps是一个很小的正数，防止分母为0\\
 $$
+
 想法就是，当前步的权重$\alpha^{(k)}$是根据上一步$loss_{u1}^{(k-1)},loss_{u2}^{(k-1)}$的比值来调整,当$\alpha^{(k)}$>1时，表示上一步loss_u2的值更大，故在当前步，让loss_u2乘上$a^{(k)}>1$,使得当前步loss_u2下降得更快。
-
-
 
 这种”自适应“策略有很多，想怎么构造就怎么构造，要抓的点就是根据以前的loss，动态地调整权重，使得当前步倾向训练于前N步中较大的 **子loss** 。
 
-
-
-​	
 
 ---
 
@@ -834,27 +740,27 @@ $$
 2. 耦合训练——Adam算法
 3. 耦合训练——LBFGS算法
 
-**代码见0721_自适应&LBFGS_Parabolic耦合模型.ipynb**<br />比较Adam算法和LBFGS算法的训练表现。<br />（有必要深入了解Adam的性质，在训练后期表现远不如LBFGS）
+**代码见0721_自适应&LBFGS_Parabolic耦合模型.ipynb**`<br />`比较Adam算法和LBFGS算法的训练表现。`<br />`（有必要深入了解Adam的性质，在训练后期表现远不如LBFGS）
 
 # 07-22
 
 ## 区域反问题
 
-​	流体力学领域还存在各种各样的反问题，比如物理模型的初边值 条件是未知的，取而代之的是已知内部部分区域或部分物理量的数值真解，以此 反推整个区域的流体运动情况；或者，物理模型的方程本身具有一些未知参数， 需要通过真实的数值结果进行反推。这类问题在工程应用中具有很大意义，然而 各种传统方法对此类问题的求解具有一定的难度，在本文神经网络求解的框架 下，却很容易对该类反问题尝试进行求解。
+    流体力学领域还存在各种各样的反问题，比如物理模型的初边值 条件是未知的，取而代之的是已知内部部分区域或部分物理量的数值真解，以此 反推整个区域的流体运动情况；或者，物理模型的方程本身具有一些未知参数， 需要通过真实的数值结果进行反推。这类问题在工程应用中具有很大意义，然而 各种传统方法对此类问题的求解具有一定的难度，在本文神经网络求解的框架 下，却很容易对该类反问题尝试进行求解。
 
-​	使用之前的Parabolic 耦合PDE模型进行区域反问题的实验。
+    使用之前的Parabolic 耦合PDE模型进行区域反问题的实验。
 
 对**区域1{(x,y)|0<=x<=1,0<=y<=1}**的划分为：
 
-​								 regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
+    regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
 
-​								 regions_y = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
+    regions_y = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
 
 对**区域2{(x,y)|0<=x<=1,-1<=y<=0}**的划分为：
 
-​									regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
+    regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
 
-​									regions_y = [ [-0.10,-0.30],[-0.40,-0.60],[-0.70,-0.90] ]
+    regions_y = [ [-0.10,-0.30],[-0.40,-0.60],[-0.70,-0.90] ]
 
 3 * 3 = 9，每个区域被分为9个子区域
 
@@ -866,17 +772,17 @@ $$
 
 ---
 
-# 07-23 
+# 07-23
 
 ## 参数反问题
 
-​	参数反问题是指已知部分、乃至全部真解，反推模型的参数，以传统方法来说，这是很困难的，但在PINN框架下，只需要将模型参数设为变量，带入真解训练模型（同时训练参数），可以反推参数。
+    参数反问题是指已知部分、乃至全部真解，反推模型的参数，以传统方法来说，这是很困难的，但在PINN框架下，只需要将模型参数设为变量，带入真解训练模型（同时训练参数），可以反推参数。
 
 代码见 **0723_参数反问题_Parabolic耦合模型.ipynb**
 
 ---
 
-# 07-26 
+# 07-26
 
 ## 3d 算例& n-d 算例
 
@@ -885,6 +791,7 @@ $$
 ### **parabolic 耦合PDE模型**
 
  In this work, a simplified model of diffusion through two adjacent materials which are coupled across their shared and rigid interface $I$ through a jump condition is considered. This problem captures some of the time-stepping difficulties of the ocean-atmosphere problem described in 1.2. The domain consists of two subdomains $\Omega_{1}$ and $\Omega_{2}$ coupled across an interface $I$ (example in Figure $1.1$ below). The problem is: given $\nu_{i}>0, f_{i}:[0, T] \rightarrow H^{1}\left(\Omega_{i}\right), u_{i}(0) \in$ $H^{1}\left(\Omega_{i}\right)$ and $\kappa \in \mathbb{R}$, find (for $\left.i=1,2\right) u_{i}: \bar{\Omega}_{i} \times[0, T] \rightarrow \mathbb{R}$ satisfying
+
 $$
 \begin{aligned}
 u_{i, t}-\nu_{i} \Delta u_{i} &=f_{i}, \quad \text { in } \Omega_{i}, &(1.1)\\
@@ -893,9 +800,11 @@ u_{i}(x, 0) &=u_{i}^{0}(x), \quad \text { in } \Omega_{i}, &(1.3)\\
 u_{i} &=g_{i}, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I . &(1.4)
 \end{aligned}
 $$
+
 ### **2d算例**
 
 Assume $\Omega_{1}=[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[-1,0]$, so $I$ is the portion of the $x$-axis from 0 to 1 . Then $\mathbf{n}_{1}=[0,-1]^{T}$ and $\mathbf{n}_{2}=[0,1]^{T}$. For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
+
 $$
 \begin{aligned}
 &u_{1}(t, x, y)=a x(1-x)(1-y) e^{-t} \\
@@ -904,15 +813,16 @@ $$
 $$
 
 The constants $c_{1}, c_{2}, c_{3}$ are determined from the interface conditions (1.2) and the boundary conditions for $u_{2}$. One may verify that with the following choices for $c_{1}, c_{2}, c_{3}, u_{1}$ and $u_{2}$ will satisfy (1.1)-(1.4) with $g_{1}=g_{2}=0$, i. e. when $x \in\{0,1\}$ or $y \in\{-1,1\}$ :
+
 $$
 c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .
 $$
+
 The numerical analysis performed in Section 4 indicates that by choosing $\kappa$ to be no larger than $\nu_{1}, \nu_{2}$ the IMEX scheme should perform as well as the implicit scheme. Computational results comparing the performance of the two methods are listed for two test problems:
+
 - Test Problem 1: $a=\nu_{1}=\nu_{2}=\kappa=1$.
 
-
-
- 实际上 `u1` 和`u2`的构造是基于令$u_{i} =g_{i} =0, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I$, 你会发现在边界上u1 = 0 。
+ 实际上 `u1` 和 `u2`的构造是基于令$u_{i} =g_{i} =0, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I$, 你会发现在边界上u1 = 0 。
 
 再根据(1.2)和(1.4)推出u2中参数需要满足的关系式。最后在根据(1.1)求出f1和f2。确定参数的值，最终构成一个完整的算例。
 
@@ -920,11 +830,12 @@ The numerical analysis performed in Section 4 indicates that by choosing $\kappa
 
 ### 3d算例
 
-Assume $\Omega_{1}=[0,1] \times[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[0,1]\times[-1,0]$, so $I$ is the plain of z=0 , the $x$-axis from 0 to 1 ,the $y$-axis from 0 to 1.Namely.  $I$ = $[0,1] \times[0,1] \times\{0\}$ . 
+Assume $\Omega_{1}=[0,1] \times[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[0,1]\times[-1,0]$, so $I$ is the plain of z=0 , the $x$-axis from 0 to 1 ,the $y$-axis from 0 to 1.Namely.  $I$ = $[0,1] \times[0,1] \times\{0\}$ .
 
-Then $\mathbf{n}_{1}=[0,0,-1]^{T}$ and $\mathbf{n}_{2}=[0,0,1]^{T}$. 
+Then $\mathbf{n}_{1}=[0,0,-1]^{T}$ and $\mathbf{n}_{2}=[0,0,1]^{T}$.
 
 For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
+
 $$
 \begin{aligned}
 &u_{1}(t, x, y, z)=a xy(1-x)(1-y)(1-z) e^{-t} \\
@@ -933,9 +844,11 @@ $$
 $$
 
 The constants $c_{1}, c_{2}, c_{3}$ are determined from the interface conditions (1.2) and the boundary conditions for $u_{2}$. One may verify that with the following choices for $c_{1}, c_{2}, c_{3}, u_{1}$ and $u_{2}$ will satisfy (1.1)-(1.4) with $g_{1}=g_{2}=0$, i. e. when $(x,y,z) \in\{x=1,0\leq y \leq 1,0\leq z \leq 1\}, u_1(x,y,z,t) = 0$ :
+
 $$
 c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1}.
 $$
+
 The numerical analysis performed in Section 4 indicates that by choosing $\kappa$ to be no larger than $\nu_{1}, \nu_{2}$ the IMEX scheme should perform as well as the implicit scheme. Computational results comparing the performance of the two methods are listed for two test problems:
 
 - Test Problem 1: $a=\nu_{1}=\nu_{2}=\kappa=1$.
@@ -944,9 +857,10 @@ The numerical analysis performed in Section 4 indicates that by choosing $\kappa
 
 $\Omega_{1}=\underbrace{[0,1] \times... \times[0,1] }_{n-1}\times[0,1]$,$\Omega_{2}=\underbrace{[0,1] \times... \times[0,1] }_{n-1}\times[-1,0]$,  $I$ = $\underbrace{[0,1] \times... \times[0,1] }_{n-1}\times\{0\}$ .
 
-Then $\mathbf{n}_{1}=\underbrace{[0,...,0}_{n-1},-1]^{T}$ and $\mathbf{n}_{2}=\underbrace{[0,...,0}_{n-1},1]^{T}$. 
+Then $\mathbf{n}_{1}=\underbrace{[0,...,0}_{n-1},-1]^{T}$ and $\mathbf{n}_{2}=\underbrace{[0,...,0}_{n-1},1]^{T}$.
 
 For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
+
 $$
 \begin{aligned}&u_{1}(t, x_1, x_2, ...,x_n)=ae^{-t} \prod \limits_{i=1}^n
 x_i(1-x_i)  \\
@@ -954,7 +868,9 @@ x_i(1-x_i)  \\
 x_i(1-x_i) .
 \end{aligned}
 $$
+
 The constants $c_{1}, c_{2}, c_{3}$ are determined from the interface conditions (1.2) and the boundary conditions for $u_{2}$. One may verify that with the following choices for $c_{1}, c_{2}, c_{3}, u_{1}$ and $u_{2}$ will satisfy (1.1)-(1.4) with $g_{1}=g_{2}=0$:
+
 $$
 c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .
 $$
@@ -973,13 +889,13 @@ DeepXDE&TensorDiffEq是现有的PINN求解器。
 
 ---
 
-# 07-27 
+# 07-27
 
 ## 3D-parabolic代码编写
 
-​	在2d基础上新增一个维度即可，即在神经网络的输入Input层新增一个维度and增加对z的偏导。注意训练数据的生成以及图像生成需要略微改动。
+    在2d基础上新增一个维度即可，即在神经网络的输入Input层新增一个维度and增加对z的偏导。注意训练数据的生成以及图像生成需要略微改动。
 
-​	实验效果见 **0727_3D_Parabolic耦合模型.ipynb**
+    实验效果见**0727_3D_Parabolic耦合模型.ipynb**
 
 > 因为增加一个维度，训练的难度有所上升，
 >
@@ -987,13 +903,15 @@ DeepXDE&TensorDiffEq是现有的PINN求解器。
 > - 增加区域内采样点N_f的数量，和初边值条件的训练点。
 
 # 07-30
+
 ## 3D-parabolic代码优化
-在原先代码的基础上，为CouplePinn的model增加了若干Metrics指标  
+
+在原先代码的基础上，为CouplePinn的model增加了若干Metrics指标
 ：loss，loss_u1,loss_u2,loss_i,error_u1,error_u2。
 
 在每次epoch结束，都会打印这些指标的值，loss类指标反应了损失函数的变化，error类指标反应了测试集的错误率，即真实解与模型得出的解之间的差距。
 
-代码见`0730_3D_Parabolic耦合模型_优化.ipynb`，拟合效果还是不错的。
+代码见 `0730_3D_Parabolic耦合模型_优化.ipynb`，拟合效果还是不错的。
 
 此外，上述提到的指标有助于我们分析模型在训练中情况，帮助我们诊断训练结果的好坏。具体来说，有以下准则：
 
@@ -1007,28 +925,34 @@ DeepXDE&TensorDiffEq是现有的PINN求解器。
   - 解决办法：检查dataset
 - 情况四：loss趋于不变，error趋于不变，说明**学习遇到瓶颈或收敛(error已经很低)**
   - 解决办法：减少学习率or增大batch_size(即减少批量总数)or停止训练
+
 ---
+
 # 08-01
+
 ## [Effective Tensorflow2(上)](https://www.tensorflow.org/guide/effective_tf2)
-    学习TensorFlow官网的 **Effective Tensorflow2** 文档，
+
+    学习TensorFlow官网的**Effective Tensorflow2** 文档，
     高效地使用TensorFlow2搭建以及训练模型。
 
-
 ## Overview
+
 This guide provides a list of best practices for writing code using TensorFlow 2 (TF2)
-## 如何更好使用 TensorFlow2 
+
+## 如何更好使用 TensorFlow2
 
 ### **1.重构代码:更多的子模块**
 
 A good practice is to refactor your code into smaller functions that are called as needed. For best performance, you should try to decorate the largest blocks of computation that you can in a tf.function (note that the nested python functions called by a tf.function do not require their own separate decorations, unless you want to use different jit_compile settings for the tf.function). Depending on your use case, this could be multiple training steps or even your whole training loop. For inference use cases, it might be a single model forward pass.
 
-使用`@tf.function`装饰器 包装函数，特别对于大型计算类函数，比如向前传播`Forward Pass`, 单步训练`training by step`。
+使用 `@tf.function`装饰器 包装函数，特别对于大型计算类函数，比如向前传播 `Forward Pass`, 单步训练 `training by step`。
 
-在TensorFlow2中，默认动态图Eager模式，使用`@tf.function`装饰函数后，能使得该函数内的计算转为AutoGraph模式。
+在TensorFlow2中，默认动态图Eager模式，使用 `@tf.function`装饰函数后，能使得该函数内的计算转为AutoGraph模式。
 
 简单的理解就是，函数被@tf.function后，每次调用它，都是从内存中取出该函数的计算图，而不是Eager模型下再次动态构建计算图。@tf.function能够提高计算效率，特别是对于大型计算。
 
 ---
+
 ### **2.调节优化器Optimizer的默认学习率**
 
 TensorFlow的内置优化器集成在tf.keras.optimizers中，比如SDG、Adam、Nadam、RMSprop等。
@@ -1048,13 +972,14 @@ The following default learning rates have changed:
 
 ### **3.继承tf.Module以及使用Keras.layers管理Variables**
 
-`tf.Module`和`tf.keras.layers.Layer`含有两种好用的属性`variables` and `trainable_variables`,它们递归地收集了模型中所有的变量。
+`tf.Module`和 `tf.keras.layers.Layer`含有两种好用的属性 `variables` and `trainable_variables`,它们递归地收集了模型中所有的变量。
 
 This makes it easy to manage variables locally to where they are being used.
 
-Keras layers/models 继承 `tf.train.Checkpointable` 子类 并与`@tf.function`相融合,这使得我们能够直接保存checkpoint或者从Keras Objects中导出模型计算图。
+Keras layers/models 继承 `tf.train.Checkpointable` 子类 并与 `@tf.function`相融合,这使得我们能够直接保存checkpoint或者从Keras Objects中导出模型计算图。
 
 ---
+
 ### **4. 结合tf.data.Dataset 和 @tf.function**
 
 `tf.data.Dataset`也叫数据管道。当训练数据量太多时，内存容量不足以支持将数据全部放入内存中并开始训练。数据管道的作用就是每次训练都从外存中拿一部分数据进来训练。
@@ -1067,8 +992,10 @@ Tensorflow Datesets(tfds) 包，提供了许多utilities，我们可以通过tf.
 datasets, info = tfds.load(name='mnist', with_info=True, as_supervised=True)
 mnist_train, mnist_test = datasets['train'], datasets['test']
 ```
+
 接着预处理数据，做成训练数据：
-``` python
+
+```python
 BUFFER_SIZE = 10 # Use a much larger value for real code
 BATCH_SIZE = 64
 NUM_EPOCHS = 5
@@ -1080,7 +1007,8 @@ def scale(image, label):
 
   return image, label
 ```
-``` python
+
+```python
 train_data = mnist_train.map(scale).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 test_data = mnist_test.map(scale).batch(BATCH_SIZE)
 
@@ -1090,14 +1018,14 @@ train_data = train_data.take(STEPS_PER_EPOCH)
 test_data = test_data.take(STEPS_PER_EPOCH)
 ```
 
-``` python
+```python
 image_batch, label_batch = next(iter(train_data))
 # 这里 next,iter都是python内置的迭代器方法，用于取出一个元素
 ```
 
 Use regular Python iteration to iterate over training data that fits in memory. Otherwise, tf.data.Dataset is the best way to stream training data from disk. Datasets are iterables (not iterators), and work just like other Python iterables in eager execution. You can fully utilize dataset async prefetching/streaming features by wrapping your code in tf.function, which replaces Python iteration with the equivalent graph operations using AutoGraph.
 
-``` python
+```python
 @tf.function
 def train(model, dataset, optimizer):
   for x, y in dataset: #从dataset中解包出 x，y
@@ -1114,11 +1042,13 @@ def train(model, dataset, optimizer):
 
 > fit是训练模型的函数，高阶API，程序员已经帮我们写好了一种一般化的训练步骤，只需要指定训练数据，优化器等模型配置即可开始训练，不用自己编写训练代码.
 
-``` python
+```python
 model.compile(optimizer=optimizer, loss=loss_fn)
 model.fit(dataset)
 ```
+
 ---
+
 ### **5.使用Keras内置的训练loop**
 
 当我们不需要对训练过程进行底层的控制，那么就使用Keras的 bulit-in 方法吧，比如 fit，evaluate和predict。
@@ -1128,6 +1058,7 @@ model.fit(dataset)
 - predict：预测/推理
 
 使用这些方法，包括但不限于如下优势：
+
 - 简单，傻瓜式
 - 支持 Numpy arrays, Python generators 和 `tf.data.Datasets`.
 - 自动使用 regularization 和 激活函数
@@ -1141,7 +1072,8 @@ model.fit(dataset)
 
 fit()方法是会调用train_step()方法，即每一步的训练过程。
 fit大致结构是：
-``` python
+
+```python
 def fit(ds,epochs,*args,**kwargs):
     ...
     for epoch in tf.range(epochs):
@@ -1158,7 +1090,9 @@ def fit(ds,epochs,*args,**kwargs):
     同时还能继续使用fit()中好用的功能。像搭积木一样。
     '''
 ```
-下面展示一个使用`Dataset`训练模型的例子：
+
+下面展示一个使用 `Dataset`训练模型的例子：
+
 ```python
 model = tf.keras.Sequential([
     tf.keras.layers.Conv2D(32, 3, activation='relu',
@@ -1182,7 +1116,8 @@ loss, acc = model.evaluate(test_data)
 
 print("Loss {}, Accuracy {}".format(loss, acc))
 ```
-``` Plain Text
+
+```Plain
 Epoch 1/5
 5/5 [==============================] - 9s 7ms/step - loss: 1.5762 - accuracy: 0.4938
 Epoch 2/5
@@ -1196,8 +1131,11 @@ Epoch 5/5
 5/5 [==============================] - 1s 4ms/step - loss: 1.4553 - accuracy: 0.5781
 Loss 1.4552843570709229, Accuracy 0.578125
 ```
+
 ---
+
 ### **6.自定义训练过程**
+
 我在写PINN和Couple PINN的代码就是自定义训练过程。
 
 If Keras models work for you, but you need more flexibility and control of the training step or the outer training loops, you can implement your own training steps or even entire training loops.
@@ -1207,13 +1145,15 @@ You can also implement many things as a `tf.keras.callbacks.Callback`.
 This method has many of the advantages mentioned previously, but gives you control of the train step and even the outer loop.
 
 **Train Loop 标准化三步走：**
+
 1. 通过Python Generator or tf.data.Dataset 迭代获得一个batch
 2. 使用tf.GradientTape()梯度磁带 记录计算流，用于求梯度。
 3. 使用tf.keras.optimizers 将梯度 apply to weights in model.
 
 **需要注意的是：**
+
 1. 当 call 模型或者layers时，总是传入training参数
-    `model(inputs,training=True)`
+   `model(inputs,training=True)`
 2. 确保training设置正确，比如上边training = True
 3. 根据使用情况而定，某些variables可能只有 当模型在a batch of data上运行时才存在，出去之后就没了。
 4. 需要手动处理一些操作，比如 regularization losses for the model.
@@ -1221,7 +1161,8 @@ This method has many of the advantages mentioned previously, but gives you contr
 There is no need to run variable initializers or to add manual control dependencies. tf.function handles automatic control dependencies and variable initialization on creation for you.
 
 一个例子：
-``` python
+
+```python
 model = tf.keras.Sequential([
     tf.keras.layers.Conv2D(32, 3, activation='relu',
                            kernel_regularizer=tf.keras.regularizers.l2(0.02),
@@ -1253,14 +1194,16 @@ for epoch in range(NUM_EPOCHS):
     train_step(inputs, labels)
   print("Finished epoch", epoch)
 ```
+
 ---
+
 ### **7.与Python控制流搭配使用tf.function**
-`tf.function` 提供了一种将data-dependent控制流 转为 计算图模式的等效控制流，比如 ```tf.cond```,```tf.range```,```tf.while_loop``` .
+
+`tf.function` 提供了一种将data-dependent控制流 转为 计算图模式的等效控制流，比如 ``tf.cond``,``tf.range``,``tf.while_loop`` .
 
 One common place where data-dependent control flow appears is in sequence models. tf.keras.layers.RNN wraps an RNN cell, allowing you to either statically or dynamically unroll the recurrence. As an example, you could reimplement dynamic unroll as follows.
 
-
-``` python
+```python
 class DynamicRNN(tf.keras.Model):
 
   def __init__(self, rnn_cell):
@@ -1281,16 +1224,20 @@ class DynamicRNN(tf.keras.Model):
       outputs = outputs.write(i, output)
     return tf.transpose(outputs.stack(), [1, 0, 2]), state
 ```
+
 # 08-02
+
 ## [Effective Tensorflow2(下)](https://www.tensorflow.org/guide/effective_tf2)
+
 ---
 
 ### **8.New-style metrics and losses**
+
 指标Metrics和损失Losses在keras中都是由@tf.function装饰的object。
 
 一个Loss对象是callable的(仿函数的概念),(y_ture,y_pred)作为输入参数。例如：
 
-``` python
+```python
 cce = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 cce([[1, 0]], [[-1.0,3.0]]).numpy()
 
@@ -1299,19 +1246,19 @@ cce([[1, 0]], [[-1.0,3.0]]).numpy()
 
 我们可以使用Metrics来收集和展示训练过程中产生的数据。
 
-使用`tf.metrics`收集数据 and 使用 `tf.summary` 将数据打印出来。使用`上下文管理器`可将数据重定向到本地文件，即把日志信息写入本地文件中。
+使用 `tf.metrics`收集数据 and 使用 `tf.summary` 将数据打印出来。使用 `上下文管理器`可将数据重定向到本地文件，即把日志信息写入本地文件中。
 
-``` python
+```python
 summary_writer = tf.summary.create_file_writer('/tmp/summaries')
 with summary_writer.as_default():
   tf.summary.scalar('loss', 0.1, step=42)
 ```
 
-在输出summarys之前，首先需要使用tf.metrics收集数据。Metric是有状态的，它们在一个epoch(训练周期)中将数据收集，调用`result`方法将返回Metrics中数据的累计和的平均值,比如Mean.result()。
+在输出summarys之前，首先需要使用tf.metrics收集数据。Metric是有状态的，它们在一个epoch(训练周期)中将数据收集，调用 `result`方法将返回Metrics中数据的累计和的平均值,比如Mean.result()。
 
 使用Metric.reset_states()将Metric中的数据情况，通常该函数的调用发生在一个epoch结束。
 
-``` python 
+```python
 def train(model, optimizer, dataset, log_freq=10):
   avg_loss = tf.keras.metrics.Mean(name='loss', dtype=tf.float32) # avg_loss是一个"Mean"指标器，用于记录平均的loss
   for images, labels in dataset:
@@ -1338,19 +1285,20 @@ with test_summary_writer.as_default():
   test(model, test_x, test_y, optimizer.iterations)
 ```
 
-利用`TensorBoard`可视化已生成的summaries。
+利用 `TensorBoard`可视化已生成的summaries。
 
-`tensorboard --logdir /tmp/summaries`,其中 --logdir 是定位、指向本地summaries文件的意思。 
+`tensorboard --logdir /tmp/summaries`,其中 --logdir 是定位、指向本地summaries文件的意思。
 
 Use the `tf.summary` API to write summary data for visualization in `TensorBoard`. For more info, read the `tf.summary` [guide](https://www.tensorflow.org/tensorboard/migrate#in_tf_2x).
 
 **keras metric names**
 keras内置Metrics 都有一个固定的string名称，比如 'acc' = keras.Metrics.ACC。当我们在调用compile函数，传入metrics时，可以使用metrics = ['acc',...] 替代metris=[keras.Metrics.ACC()].
 
-在输出日志时，Metrics以 `{'name' ：值}`的形式输出。 
+在输出日志时，Metrics以 `{'name' ：值}`的形式输出。
 
 例如：
-``` python
+
+```python
 model.compile(
     optimizer = tf.keras.optimizers.Adam(0.001),
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -1363,17 +1311,20 @@ history.history.keys()
 #log
 dict_keys(['loss', 'acc', 'accuracy', 'my_accuracy'])
 ```
+
 ---
+
 ### **9.Debugging**
 
 使用Eager模式可一步一步运行代码 inspect shapes, data types and values，即调试功能。
 
-需要注意的是，某些API，如`tf.funcion`,`tf.keras`等，使用Graph execution(tf1.0中叫静态图)，这种模式带来更好的运算表现和可移植性。
+需要注意的是，某些API，如 `tf.funcion`,`tf.keras`等，使用Graph execution(tf1.0中叫静态图)，这种模式带来更好的运算表现和可移植性。
 
-如果想调试@tf.function装饰的函数，需要设置`tf.config.run_functions_eagerly(True)` 使得代码以Eager模式运行。
+如果想调试@tf.function装饰的函数，需要设置 `tf.config.run_functions_eagerly(True)` 使得代码以Eager模式运行。
 
 例如：
-``` python
+
+```python
 @tf.function
 def f(x):
   if x > 0:
@@ -1386,7 +1337,7 @@ tf.config.run_functions_eagerly(True)
 f(tf.constant(1))
 ```
 
-``` python
+```python
 >>> f()
 -> x = x + 1
 (Pdb) l
@@ -1406,7 +1357,8 @@ f(tf.constant(1))
 该用法，对于Keras模型以及其他的API也是适用的(只要它支持eager)。
 
 例如：
-``` python
+
+```python
 class CustomModel(tf.keras.models.Model):
 
   @tf.function
@@ -1441,12 +1393,15 @@ model(tf.constant([-2, -4]))
 ```
 
 Notes:
-- `tf.keras.Model` methods such as `fit`, `evaluate,` and `predict` execute as graphs with tf.function under the hood. 在内层循环用graphs计算模式，意思是说`fit`没有被@tf.function，fit函数里面调用了`tf.function`，比如`train_step()`.
+
+- `tf.keras.Model` methods such as `fit`, `evaluate,` and `predict` execute as graphs with tf.function under the hood. 在内层循环用graphs计算模式，意思是说 `fit`没有被@tf.function，fit函数里面调用了 `tf.function`，比如 `train_step()`.
 - When using `tf.keras.Model.compile`, set `run_eagerly = True` to disable the Model logic from being wrapped in a tf.function.
 - Use `tf.data.experimental.enable_debug_mode` to enable the debug mode for `tf.data`. Read the [API docs](https://www.tensorflow.org/api_docs/python/tf/data/experimental/enable_debug_mode) for more details.
 
 ---
+
 ### **10.Do not keep tf.Tensors in your objects**
+
 如果一个函数内部存在创建tf.Variables的行为，那么两种执行模式 `@tf.function`和Eager模式(not wrappd in a tf.function)下，该函数的效果是不一样的。
 
 实际上，如果一个函数内部有创建tf.Variables的行为，并且被@tf.function，那么tensorflow会报错，并提示你不要这样做。
@@ -1458,14 +1413,18 @@ Notes:
 Always use `tf.Tensors` only for intermediate values.
 
 > End
+
 ---
+
 ## [DeepXDE论文阅读(1)]
+
 [DeepXDE- A Deep Learnin Library for Solving Differential Equations](../论文资料/DeepXDE-%20A%20Deep%20Learning%20Library%20for%20Solving%20Differential%20Equations.pdf)
 
 ### 摘要
 
 近年来Deep Learning在很多应用场景下取得了非凡的成功，然而，它在求解PDEs的应用在近几年才开始时出现。
-``` Plaintext
+
+```Plaintext
 近几年来才开始出现神经网络求解PDEs的研究热，我认为这是有点奇怪的。Deep Learning通常指多层的神经网络结构。
 
 因为，从数学的角度看，神经网络实际是一个函数，由神经元所代表的激活函数复合而成。我们利用该函数构造目标函数loss，而所谓训练就是指`最优化(minimize) loss`。
@@ -1474,17 +1433,21 @@ Always use `tf.Tensors` only for intermediate values.
 
 说到这里，就很自然抛出疑问：为什么不用神经网络逼近PDEs的解呢？Deep Learning方法求解PDEs在近几年才出现？
 ```
+
 `回到论文中:`
 
-我们首先给出PINNs(physics-informed neural networks)的一个总览。PINNs将PDE"嵌入"神经网络的损失函数loss中，对模型进行训练。PINNs的算法框架很simple，并且它可以应用到不同类型的PDEs中，例如：integro-differential equations,fractional PDEs, and stochastic PDEs。更进一步，从应用角度看，PINNs求解反问题与正问题是同样简单的。我们提出了一种`基于残差的适应改进方法`来提升PINNs的训练效率。
+我们首先给出PINNs(physics-informed neural networks)的一个总览。PINNs将PDE"嵌入"神经网络的损失函数loss中，对模型进行训练。PINNs的算法框架很simple，并且它可以应用到不同类型的PDEs中，例如：integro-differential equations,fractional PDEs, and stochastic PDEs。更进一步，从应用角度看，PINNs求解反问题与正问题是同样简单的。我们提出了一种 `基于残差的适应改进方法`来提升PINNs的训练效率。
 
 我们创建了一个python库——DeepXDE，可服务于PINNs教学和PINNs的研究。DeepXDE可解决正问题(有初边值条件和求解区域)以及反问题(有其他条件)。DeepXDE支持复数域PDEs。我们给出5个不同的算例，证明PINNs的求解能力以及DeepXDE的使用方法。
 
 # 08-03
+
 ## [DeepXDE论文阅读(2)]
+
 [DeepXDE- A Deep Learnin Library for Solving Differential Equations](../论文资料/DeepXDE-%20A%20Deep%20Learning%20Library%20for%20Solving%20Differential%20Equations.pdf)
 
 ### Introduction
+
 过去15年内，深度神经网络形式的深度学习发展很快。(深度学习是个很泛的概念，狭义指深度神经网络，就是有很多层的神经网络。)
 在近几年来，神经网络应用于数值计算开始出现，例如PINN。我们借助神经网络替代传统的离散化数值方法去逼近PDE的解。
 
@@ -1506,6 +1469,7 @@ Section5：
 总结。
 
 ### 算法&训练策略&收敛性
+
 2.1 Deep Neural Networks，2.2 AutomaticDifferentiation略。
 
 **2.3. Physics-Informed Neural Networks (PINNs) for Solving PDEs. **
@@ -1513,9 +1477,11 @@ Section5：
 We consider the following PDE parameterized by $\lambda$ for the solution $u(\mathrm{x})$ with $\mathrm{x}=\left(x_{1}, \ldots, x_{d}\right)$ defined on a domain $\Omega \subset \mathbb{R}^{d}$ :
 (2.1) $f\left(\mathbf{x} ; \frac{\partial u}{\partial x_{1}}, \ldots, \frac{\partial u}{\partial x_{d}} ; \frac{\partial^{2} u}{\partial x_{1} \partial x_{1}}, \ldots, \frac{\partial^{2} u}{\partial x_{1} \partial x_{d}} ; \ldots ; \boldsymbol{\lambda}\right)=0, \quad \mathbf{x} \in \Omega$,
 with suitable boundary conditions
+
 $$
 \mathcal{B}(u, \mathrm{x})=0 \quad \text { on } \quad \partial \Omega,
 $$
+
 where $\mathcal{B}(u, \mathbf{x})$ could be Dirichlet, Neumann, Robin, or periodic boundary conditions. For time-dependent problems, we consider time $t$ as a special component of $\mathbf{x}$, and $\Omega$ contains the temporal domain. The initial condition can be simply treated as a special type of Dirichlet boundary condition on the spatio-temporal domain.
 
 PINN是算法流程以及网络示意图如下:
@@ -1543,9 +1509,10 @@ PINNs的迭代次数很大取决于PDEs的复杂性（光滑的PDEs收敛速度�
 PINNs的原始版本，也就是上面讨论的PINNs，实际上我们是将边界条件作为“软约束(加入loss)”，这种方法能够应用于任何形状的边界条件以及复数域。从另一个方面来说，对于一些简单的边界条件，实际上我们可以令边界条件变成“强约束”。例如，当边界条件是$u(0)=u(1)=0 \ with \Omega=[0,1]$,可以将解设置为 $\hat{u(x)}=x(x-1)N(x)$，自动满足边界条件，$N(x)$是一个神经网络。
 
 对于残差点$\tau$的选择具有灵活多样性，下面提供三种策略：
+
 1. 在训练开始前就指定残差点，可以是网格点或者随机选取。而且在训练过程中不再改变它们。
 2. 每次优化迭代，都重新随机选择一批残差点。
-3. 在训练过程中，动态地调整残差点的位置,subsection2.8。 
+3. 在训练过程中，动态地调整残差点的位置,subsection2.8。
 
 <img src="./Data/PINNs3.png">
 
@@ -1560,7 +1527,7 @@ PINNs的原始版本，也就是上面讨论的PINNs，实际上我们是将边�
     <br/>
 </center>
 
-定理2.1由Pinkus提出，描述了单隐藏层的神经网络的函数表示能力。一言以蔽之，足够多神经元的神经网络，能够同时且一致地逼近一个函数及其偏导数。然而，在实际应用中，神经网络的大小总是有限的。假设$\mathcal{F}$ 
+定理2.1由Pinkus提出，描述了单隐藏层的神经网络的函数表示能力。一言以蔽之，足够多神经元的神经网络，能够同时且一致地逼近一个函数及其偏导数。然而，在实际应用中，神经网络的大小总是有限的。假设$\mathcal{F}$
 表示某个神经网络能表示的全体函数，通常来说u不太可能属于$\mathcal{F}$,
 定义 $u_{ \mathcal{F}} = arg min_{f \in \mathcal{F}}||f-u||$,$u_{ \mathcal{F}}$是最接近u的函数，就像下图展示的那样。
 
@@ -1577,26 +1544,24 @@ $u_{\hat{\tau}}$。
 
 近似误差$\mathcal{E}_{app}$衡量的是$u_{\mathcal{F}}$近似$u$的程度。泛化误差$\mathcal{E}_{gen}$由训练集中残差点的数量/位置和$\mathcal{f}$族的容量决定。神经网络规模越大，其近似误差越小，但泛化误差越大，这被称为偏差-方差权衡。当泛化误差占主导地位时，会发生过拟合。此外，优化误差$\mathcal{E}_{opt}$来源于损失函数的复杂性和优化设置，如学习率和迭代次数。然而，目前还没有关于PINNs的误差估计，甚至对监督学习的三种误差进行量化仍然是一个开放的研究问题[36,35,25]。
 
-
 ---
 
 # 08-04
+
 ## [DeepXDE论文阅读(3)]
+
 [DeepXDE- A Deep Learnin Library for Solving Differential Equations](../论文资料/DeepXDE-%20A%20Deep%20Learning%20Library%20for%20Solving%20Differential%20Equations.pdf)
 
 ### **2.5 PINNs与FEM的比较**
+
 <center>
     <img src="./Data/PINNs8.png" width="80%">
 </center>
 
 - 在FEM中，我们用一个分段多项式来近似解u，而在PINNs中，我们构造一个神经网络作为替代模型，参数由权重和偏差。
-
 - FEM通常需要网格生成，而PINNs是完全无网格的，我们可以使用网格或随机点。
-
 - FEM利用刚度矩阵和质量矩阵将偏微分方程转化为代数系统，而PINN则将偏微分方程和边界条件嵌入到损失函数中。
-
 - 在最后一步，有限元中的代数系统是用线性解算器精确求解的，而PINNs中的网络是用基于梯度的优化器学习的。
-
 
 在根本上不同的是，PINNs提供了函数及其导数的非线性逼近，而FEM表示线性逼近。
 
@@ -1605,14 +1570,19 @@ $u_{\hat{\tau}}$。
 在求解积分微分方程(IDEs)时，我们仍然使用自动微分技术来解析地导出整数阶导数，而我们使用经典方法来数值逼近积分算子，如高斯求积。因此，我们引入了第四个误差分量，即离散化误差$\mathcal{E}_{dis}$，这是由高斯求积近似得到的。
 
 For example, when solving
+
 $$
 \frac{d y}{d x}+y(x)=\int_{0}^{x} e^{t-x} y(t) d t
 $$
+
 we first use Gaussian quadrature of degree $n$ to approximate the integral
+
 $$
 \int_{0}^{x} e^{t-x} y(t) d t \approx \sum_{i=1}^{n} w_{i} e^{t_{i}(x)-x} y\left(t_{i}(x)\right)
 $$
+
 and then we use a PINN to solve the following PDE instead of the original equation:
+
 $$
 \frac{d y}{d x}+y(x) \approx \sum_{i=1}^{n} w_{i} e^{t_{i}(x)-x} y\left(t_{i}(x)\right)
 $$
@@ -1624,6 +1594,7 @@ PINNs can also be easily extended to solve FDEs and SDEs , but we do not discuss
 </center>
 
 ### **2.7 PINNs求解反问题**
+
 反问题通常是指，在PDEs中有未知的参数$\lambda$,相对地，我们拥有一些额外的信息，比如指定某个子区域$\mathcal{T}_i$的解或者相关信息。
 
 PINNs求解反问题，实际上与求解正问题是一样的，我们只需要在模型中新增$\lambda$变量，根据额外的信息在loss函数中增项，并在训练过程中一起优化$\theta 和\lambda$即可。
@@ -1631,10 +1602,13 @@ PINNs求解反问题，实际上与求解正问题是一样的，我们只需要
 $$
 \mathcal{L}(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T})=w_{f} \mathcal{L}_{f}\left(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T}_{f}\right)+w_{b} \mathcal{L}_{b}\left(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T}_{b}\right)+w_{i} \mathcal{L}_{i}\left(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T}_{i}\right)
 $$
+
 where
+
 $$
 \mathcal{L}_{i}\left(\theta, \lambda ; \mathcal{T}_{i}\right)=\frac{1}{\left|\mathcal{T}_{i}\right|} \sum_{\mathbf{x} \in \mathcal{T}_{i}}\|\mathcal{I}(\hat{u}, \mathrm{x})\|_{2}^{2}
 $$
+
 We then optimize $\boldsymbol{\theta}$ and $\boldsymbol{\lambda}$ together, and our solution is $\boldsymbol{\theta}^{*}, \boldsymbol{\lambda}^{*}=\arg \min _{\boldsymbol{\theta}, \boldsymbol{\lambda}} \mathcal{L}(\boldsymbol{\theta}, \boldsymbol{\lambda} ; \mathcal{T})$.
 
 ### **2.8 基于残差的自适应优化(RAR)**
@@ -1652,16 +1626,22 @@ RAR的思想是：
 
 ---
 
-# 08-05 
+# 08-05
+
 ## 各种优化算法
+
 梯度下降算法是一种有效的训练神经网络的方式，在最优化领域梯度下降也是最基本的方法，所谓的训练神经网络就是最优化loss函数。
 现在的各种优化算法如Adam、RMSprop等等，都是基于梯度下降的算法。
 然而，标准的梯度下降法要求的计算量是很大的，需要对它进行优化，用更少的计算实现差不多的效果。优化梯度下降法有两个思路：优化神经网络结构和优化梯度下降法本身。
+
 ## 1.减少计算量
+
 ### 1.1 随机梯度下降法
+
 以交叉熵计算损失函数为例,$loss=- \sum_{i=1}^n(y_i*\log_2 \hat{y_i} + (1-y_i)*\log_2(1-\hat{y_i}))$，其中n代表训练样本数量，训练集的数量很大，每次训练如果把所有样本都计算一遍的计算量太大了。
 
 优化思路：
+
 1. 减少每次训练计算量
 2. 优化下降的路径，更少的步数更快地达到极值点
 
@@ -1671,18 +1651,21 @@ RAR的思想是：
 随机梯度下降法的收敛性： 凸问题: $f(x^{(k)})-f^*= O(\frac{1}{\sqrt k}),k代表迭代次数，f^*代表极值点$
 
 ### 1.2 Mini-batch方法
+
 mini-batch是现在的随机梯度下降法的别称，每次不止调一个数据，而是挑一个batch的数据训练。
 
 ## 2. 优化下降路径
+
 严格来说，用一阶taylor展开，梯度指向的是上升最快的方向，负梯度才是下降最快的方向。而梯度是某一个点的下降最快的方向，如果想要把整个下降最优的路径也描绘出来，每次迭代的步长要无线小才行。故，每次迭代有一个确定的步长，而有了这个步长那么下降路径一定不会跟最优的下降路线完全重合。
 
-<img src="./Data/grad1.png"> 
+<img src="./Data/grad1.png">
 
 如上图所示，如果每一个下降的步长太长，它可能偏离最优的路径。学习步长由学习率决定。A->A'经过B点，而B点的最速下降方向已经不是AA'了。
 
 如何保证在一定的学习步长，同时又较好地贴近最优路径呢？
 
 ### 2.1 Newton法
+
 梯度下降法实际上是一阶泰勒展开，如果步长太大，偏差会较大。而Newton法使用二阶泰勒展开逼近，二次函数有顶点(最小值点)，当学习步长取当前x到该顶点的$\Delta x$时训练效果最好，一旦过了该顶点，近似效果可能还不如一阶导。在一维的情况下，这是很明显的，如图所示。牛顿法的学习步长是确定的。
 
 <img src="./Data/grad2.png" width="80%">
@@ -1692,6 +1675,7 @@ mini-batch是现在的随机梯度下降法的别称，每次不止调一个数�
 下降路径的维度拆分开，一个一个维度考虑。
 
 ### 2.2 动量法(冲量法)
+
 <img src="./Data/grad3.png" width="80%">
 
 如图所示，橙色的路径振荡地趋于极值点，振荡是我们不太想看到的。如果把下降方向拆分成 横轴和纵轴的分量，发现振荡的原因就纵轴的分量不断正负变化，横轴分量是一直指向极值点的。而绿色的路径，纵轴上的振荡减小，横轴上跨度又增加。
@@ -1704,13 +1688,14 @@ mini-batch是现在的随机梯度下降法的别称，每次不止调一个数�
 $V_{(t)}$是递归定义，$V_{(t)}$等于上一步的$V_{(t-1)}$+当前步的梯度$\Delta W_{(t)i} \ 它表示第t步，第i个变量W_i的梯度$。
 
 这种定义的一个问题是，如果步数够多，所有历史数据将一视同仁全部考虑。
-我们可以对V做一个`指数加权移动平均法`，使得越近的历史数据权重越大，越远的数据权重越小(趋于0)。
+我们可以对V做一个 `指数加权移动平均法`，使得越近的历史数据权重越大，越远的数据权重越小(趋于0)。
 
 $V_{(t)} = \beta * V_{(t-1)} + (1-\beta)*\Delta W_{(t)i}$
 
 <img src="./Data/grad6.png" width="80%">
 
 ### 2.3 Nesterov方法
+
 不止考虑历史数据，还能超前的考虑"未来"的数据。
 
 <center>
@@ -1754,7 +1739,7 @@ AdaGrad方法其实不止可以让学习过程最终停下来，更可以调整�
 
 <img src="./Data/grad11.png">
 
-AdaGrad方法可以做优化，不要把所有的历史包袱都考虑进来，只考虑比较当前比较近的部分历史。做法还是`指数加权移动平均法`，不再赘述。
+AdaGrad方法可以做优化，不要把所有的历史包袱都考虑进来，只考虑比较当前比较近的部分历史。做法还是 `指数加权移动平均法`，不再赘述。
 
 优化过后AdaGrad的算法称为 `RMSprop方法`。
 
