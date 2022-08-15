@@ -1,9 +1,9 @@
-# cPINNs报告
+# cPINNs报告——by 钱骋
 
 [toc]
 
 ## 引言
-​	本文是我在暑期研究PINNs求解耦合PDE的研究报告。**在Section1中**，我将从数学的角度描述神经网络，什么是深度学习，以及用数学的语言描述机器学习中的概念，包括神经元、层、权重和偏置、loss、优化器、训练等概念。**在Section2.1中**，我将介绍PINNs(Physcis-Informed Neural Networks)的核心思想：如何使用神经网络求解PDEs，以及PINNs的算法框架，并给出PINNs求解Burgers方程的算例来体现PINNs的威力。**在Section2.2中**，我将介绍cPINNs(c : couple)，即求解耦合问题的PDEs的PINNs模型，我将给出c-PINNs模型结构和求解算法.**在Section2.3中**，我将使用cPINNs求解两个耦合PDEs模型。首先，使用cPINNs求解一个具有解析解的2D-parabolic耦合PDEs模型 。之后，我提出一种自适应权重的cPINNs(self-adaptive-weighted-cPINNs)，以一个具有解析解的3D-parabolic耦合PDEs模型为例，对比cPINNs与self-adaptive-weighted-cPINNs，同时展现PINNs处理不同维数PDEs问题的一致性。**在Section3中**，介绍PINNs求解反问题，对于PINNs来说，正问题与反问题的求解几乎是一样的，只需略微修改核心代码，就可以将PINNs应用于各类反问题的求解，并给出上述2D-parabolic耦合PDEs模型的反问题算例。**在Section4中**，我将会讨论PINNs的收敛性问题、PINNs存在的问题以及PINNs研究现状，最后给出几个现有的PINNs求解器。
+​	本文是我在暑期研究PINNs求解耦合PDEs的研究报告。**在Section1中**，我将从数学的角度描述神经网络，什么是深度学习，以及用数学的语言描述机器学习中的概念，包括神经元、层、权重和偏置、loss、优化器、训练等概念。**在Section2.1中**，我将介绍PINNs(Physcis-Informed Neural Networks)的核心思想：如何使用神经网络求解PDEs，以及PINNs的算法框架，并给出PINNs求解Burgers方程的算例来体现PINNs的威力。**在Section2.2中**，我将介绍cPINNs(c : coupled)，即求解耦合问题的PDEs的PINNs模型，我将给出c-PINNs模型结构和求解算法.**在Section2.3中**，我将使用cPINNs求解两个耦合PDEs模型。首先，使用cPINNs求解一个具有解析解的2D-parabolic耦合PDEs模型 。之后，给出一种自适应权重的cPINNs(self-adaptive-weighted-cPINNs)，以一个具有解析解的3D-parabolic耦合PDEs模型为例，对比cPINNs与self-adaptive-weighted-cPINNs，同时展现PINNs处理不同维数PDEs问题的一致性。**在Section3中**，介绍PINNs求解反问题，对于PINNs来说，正问题与反问题的求解几乎是一样的，只需略微修改核心代码，就可以将PINNs应用于各类反问题的求解，并给出上述2D-parabolic耦合PDEs模型的**区域反问题和参数反问题**算例。**在Section4中**，我将会讨论PINNs的收敛性问题、逼近理论。**在Section5中**，我会给出若干种PINNs的优化方案。在本文最后，我介绍一下几个现有的PINNs求解器。
 
 ​	PINNs的理论部分并不困难，我在暑假对PINNs的研究也更倾向于实验写代码。我在之前完全没有接触过机器学习，我从零开始学习Tensorflow(Python第三方库，一款机器学习框架)，PINNs原作者使用的是Tensorflow1.0版本编写的PINNs代码，如今来到Tensorflow2.0时代，代码风格大变，夸张点说是完全改变。我自学了Tensorflow2.0，从零构建PINNs的代码。
 
@@ -219,7 +219,7 @@ AdaGrad(RMSprop)方法只考虑修正学习率，实际上可以把AdaGrad方法
 
 考虑如下带参数$\lambda$的PDE方程，对应的解为$u(\mathrm{x})$ with $\mathrm{x}=\left(x_{1}, \ldots, x_{d}\right)$ defined on a domain $\Omega \subset \mathbb{R}^{d}$ :
 $$
-f\left(\mathbf{x} ; \frac{\partial u}{\partial x_{1}}, \ldots, \frac{\partial u}{\partial x_{d}} ; \frac{\partial^{2} u}{\partial x_{1} \partial x_{1}}, \ldots, \frac{\partial^{2} u}{\partial x_{1} \partial x_{d}} ; \ldots ; \boldsymbol{\lambda}\right)=0, \quad \mathbf{x} \in \Omega,
+f\left(\mathbf{x} ; \frac{\partial u}{\partial x_{1}}, \ldots, \frac{\partial u}{\partial x_{d}} ; \frac{\partial^{2} u}{\partial x_{1} \partial x_{1}}, \ldots, \frac{\partial^{2} u}{\partial x_{1} \partial x_{d}} ; \ldots ; \boldsymbol{\lambda}\right)=0, \quad \mathbf{x} \in \Omega,
 $$
 边界条件：
 $$
@@ -227,13 +227,13 @@ $$
 $$
 其中，$\mathcal{B}(u, \mathbf{x})$ 可以是狄利克雷，诺伊曼，罗宾，或者周期边界条件。对于时间依赖问题，我们认为时间$t$是$\mathbf{x}$的一个特殊分量，$\Omega$包含时间域。初始条件可以简单地看成是时空域上的一种特殊类型的狄利克雷边界条件。
 
-**PINNs的思想是**：
+**PINNs的核心思想是**：
 
-构建神经网络$\hat{u}$作为真解$u$的近似，通过自动微分技术AD求公式(7)中$\hat{u}$关于$x$的各阶偏导数，如果$\hat{u} = u$，那么$\hat{u}$应该满足公式(7)。故，我们对$\hat{u}$求公式(7)中需要的导数值，计算公式(7)左端项，将它纳入loss函数，最小化它。
+​		构建神经网络$\hat{u}$作为真解$u$的近似，通过自动微分技术AD求公式(7)中$\hat{u}$关于$x$的各阶偏导数，如果$\hat{u} = u$，那么$\hat{u}$应该满足公式(7)。故，我们对$\hat{u}$求公式(7)中需要的导数值，计算公式(7)左端项，将它纳入loss函数，最小化它。这就是所谓将“物理信息”嵌入神经网络。
 
-使得$\hat{u}$能满足“PDEs”。
+​		PINNs需要两类训练点：1.初边值训练集$\mathcal{T}_b=\{(x_b,y_b)\}$ 2.残差训练集$\mathcal{T}_f=\{x_f\}$。
 
-
+​		初边值训练集往往是容易获得的。训练数据含有标签，算“有监督”训练集。而残差训练集是不需要标签的，我们只需要在求解区域内任意地选择一些点即可，这也是PINNs的一个优势。
 
 <center>
     <img src="./Picture/PINNs.png"
@@ -392,7 +392,7 @@ $$
 
   **预训练：单区域Adam训练1000次后**，耦合Adam训练1500次，batch=10。
 
-- 训练结果
+- **训练结果**
 
   $Test Error For u1:  0.06296$
 
@@ -508,7 +508,7 @@ $$
 
 ---
 
-- 下图展示了100个epoches内cPINNs和self-adaptive-weights-cPINNs之间的差异。
+1. **100个epoches内cPINNs和self-adaptive-weights-cPINNs之间的差异。**
 
 <center>
     <img src="./Picture/cp_vs_saw_cp_err.png">,
@@ -517,39 +517,302 @@ $$
 
 ---
 
-- Adam训练2000次后，L-BFGS训练1000次，10000个测试点，batch=10
+2. **Adam训练2000次后，L-BFGS训练1000次，10000个测试点，batch=10**
 
-下图展示了在T=1，Z=0时u1和u2的曲面图（包括真解和cPINNs解）
+下图展示了在t=1，z=0时u1和u2的曲面图（包括真解和cPINNs解）
 
 <center>
     <img src="./Picture/3d_parabolic_surface_real.png">
     <img src="./Picture/3d_parabolic_surface_pred.png">
 </center>
 
-下图展示了在T=1，时u1和u2的3d热力图，粒子颜色深度代表u的值。
+下图展示了在t=1，时u1和u2的3d热力图，粒子颜色深度代表u的值。
 
 <center>
     <img src="./Picture/3d_parabolic_scatter_u1.png">
     <img src="./Picture/3d_parabolic_scatter_u2.png">
 </center>
 
+
+
+下图分别展示Adam训练过程中各项指标的变化，以及L-BFGS训练过程中loss函数的变化。
+
+<center>
+    <img src="./Picture/3d_parabolic_Adam_history.png">,
+    <img src="./Picture/3d_parabolic_lbfgs_history.png">,
+</center>
+
+
+
+- **训练结果:**
+
+  $Test Error For u1:  0.07764$
+
+  $ Test Error For u2:  0.03079$
+
+
+
 # 3.PINNs求解反问题
 
+​		流体力学领域还存在各种各样的反问题，比如物理模型的初边值 条件是未知的，取而代之的是已知内部部分区域或部分物理量的数值真解，以此 反推整个区域的流体运动情况；或者，物理模型的方程本身具有一些未知参数， 需要通过真实的数值结果进行反推。这类问题在工程应用中具有很大意义，然而 各种传统方法对此类问题的求解具有一定的难度，在本文PINNs求解的框架 下，却很容易对该类反问题尝试进行求解。
 
-
-
-
-
-
-# 4. 收敛性与PINNs研究现状
-![]()
-
+​		下面我分别使用之前2d-parabolic耦合模型，讨论区域反问题和参数反问题。
+$$
+\begin{aligned}u_{i, t}-\nu_{i} \Delta u_{i} &=f_{i}, \quad \text { in } \Omega_{i}, &(1.1)\\-\nu_{i} \nabla u_{i} \cdot \hat{n}_{i} &=\kappa\left(u_{i}-u_{j}\right), \quad \text { on } I, \quad i, j=1,2, i \neq j, &(1.2)\\u_{i}(x, 0) &=u_{i}^{0}(x), \quad \text { in } \Omega_{i}, &(1.3)\\u_{i} &=g_{i}, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I . &(1.4)\end{aligned}
+$$
+Assume $\Omega_{1}=[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[-1,0]$, so $I$ is the portion of the $x$-axis from 0 to 1 . Then $\mathbf{n}_{1}=[0,-1]^{T}$ and $\mathbf{n}_{2}=[0,1]^{T}$. For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
 
 $$
-\begin{aligned}&\mathcal{L}_{1}\left(\boldsymbol{\theta_1} ; \mathcal{T}_{\Omega_1 \times T},\mathcal{T}_{\Omega_1 \times \{t_0\}},\mathcal{T}_{\Gamma_1 \times T} \right)\\&\mathcal{L}_{I}\left(\boldsymbol{\theta_1} ; \boldsymbol{\theta_2} ; \mathcal{T}_{I \times T},\right) \\&\mathcal{L}_{2}\left(\boldsymbol{\theta_2} ; \mathcal{T}_{\Omega_2 \times T},\mathcal{T}_{\Omega_2 \times \{t_0\}},\mathcal{T}_{\Gamma_2 \times T} \right) \\\end{aligned}
+\begin{aligned}
+&u_{1}(t, x, y)=a x(1-x)(1-y) e^{-t} \\
+&u_{2}(t, x, y)=a x(1-x)\left(c_{1}+c_{2} y+c_{3} y^{2}\right) e^{-t} .
+\end{aligned}
 $$
 
+The constants $c_{1}, c_{2}, c_{3}$ are determined from the interface conditions (1.2) and the boundary conditions for $u_{2}$. One may verify that with the following choices for $c_{1}, c_{2}, c_{3}, u_{1}$ and $u_{2}$ will satisfy (1.1)-(1.4) with $g_{1}=g_{2}=0$, i. e. when $x \in\{0,1\}$ or $y \in\{-1,1\}$ :
 
-$(g_{1},g_{2}) = \nabla_{\theta} \mathcal{L}_{total}(\theta_1,\theta_2;...)$
+$$
+c_{1}=1+\frac{\nu_{1}}{\kappa}, c_{2}=\frac{-\nu_{1}}{\nu_{2}}, c_{3}=c_{2}-c_{1} .
+$$
 
-$\theta_1,\theta_2 = Adam/L-BFGS(\theta_1,\theta_2;g_1,g_2)$
+- Test Problem : $a=\nu_{1}=\nu_{2}=\kappa=1$.
+
+## 区域反问题
+
+区域反问题：在求解时不提供初边值条件，而是选择区域内部分数值真解作为训练集替代初边值训练集。
+
+对**区域1{(x,y)|0<=x<=1,0<=y<=1}**的划分为：
+
+    regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
+    
+    regions_y = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
+
+对**区域2{(x,y)|0<=x<=1,-1<=y<=0}**的划分为：
+
+    regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
+    
+    regions_y = [ [-0.10,-0.30],[-0.40,-0.60],[-0.70,-0.90] ]
+
+3 * 3 = 9，每个区域被分为9个子区域
+
+**将原来边界处的训练集替换为这些子区域内的点和对应的解。**
+
+> 区域的划分有讲究，若区域过于小或者覆盖率低等，可能导致整个区域内拟合效果和真解差距大，解可能不唯一。
+
+**Configuration：**
+
+- 网络结构为：
+
+  layers = [3,20,20,20,20,1]  4 hidden Dense layers，
+
+- 训练集  $|\mathcal{T}_f^{NN_1}|=|\mathcal{T}_f^{NN_2}|=2000,|\mathcal{T}_u^{NN_1}|=|\mathcal{T}_u^{NN_1}|=1000,|\mathcal{T}_I|=200,其中\mathcal{T}_u代表区域内数值真解$.
+
+- 训练策略：
+
+  **预训练：单区域Adam训练200次。**
+
+  Adam训练500次，batch=10。
+
+  L-BFGS训练1000次。
+
+- **训练结果**
+
+  $Test\ Error\ For\ u1:  0.08442$
+
+  $Test\ Error\ For \ u2:  0.02935$
+
+  <figure class="half">
+      <img src="./Picture/2d_parabolic_surface_real.png">,
+      <img src="./Picture/2d_parabolic_区域反问题_pred.png">
+  </figure>
+
+## 参数反问题
+
+参数反问题是指已知部分、乃至全部数值真解，反推模型的参数，以传统方法来说，这是很困难的，但在PINN框架下，只需要将模型参数设为变量，带入真解训练模型（同时训练参数），可以反推参数。
+
+设$\nu_1 和\nu_2$为未知参数。初始化都为0。
+
+<center>
+    <img src="./Picture/cPINNs_参数反问题.png"
+</center>
+
+
+
+**Configuration：**
+
+- 网络结构为：
+
+  layers = [3,20,20,20,20,1]  4 hidden Dense layers，
+
+- 训练集  $|\mathcal{T}_f^{NN_1}|=|\mathcal{T}_f^{NN_2}|=2200,|\mathcal{T}_u^{NN_1}|=|\mathcal{T}_u^{NN_1}|=4000,|\mathcal{T}_I|=200,其中\mathcal{T}_u包括区域内和边界的数值真解$.
+
+- 训练策略：
+
+  **预训练：单区域Adam训练200次。**
+
+  Adam训练500次，batch=10。
+
+  L-BFGS训练2000次。
+
+- **训练结果**
+
+  $Test\ Error\ For\ u1:  0.08442$
+
+  $Test\ Error\ For\ u2:  0.02935$
+
+  $(\nu_1,\nu_2)=(0.99404157288981077, 1.0019246376433226),真解均为1$
+
+<figure class="half">
+    <img src="./Picture/2d_parabolic_surface_real.png">,
+    <img src="./Picture/2d_parabolic_参数反问题_pred.png">
+</figure>
+
+
+
+# 4. 收敛性
+
+​		与传统数值方法不同，PINNs对解的唯一性没有保证，因为PINNs的解是通过解决非凸优化问题，这通常来说是没有唯一解的。在实践中，我们需要调参，e.g. 网络结构和规模大小，学习率，残差点的数量等等。通常，网络规模大小取决于PDEs解的光滑性。例如，一个小型的网络(只有几个层，每层神经元数量也不多)就足以求解1-D的Poisson方程。而对于1D的Burgers方程，我们就需要更多的层(deeper)和神经元个数(wider)。
+
+## 逼近理论与误差分析
+
+​		对于PINNs，我们关心的最根本的问题是：是否存在神经网络能同时满足边界条件和PDE方程，i.e. 是否存在神经网络能同时且一致地逼近一个函数及其偏导数？
+
+​	首先，引入一些记号。 令 $\mathbb{Z}_{+}^{d}$ 表示n维的非负整数集合。 当 $\mathbf{m}=\left(m_{1}, \ldots, m_{d}\right) \in \mathbb{Z}_{+}^{d}$, 令$|\mathbf{m}|:=m_{1}+\cdots+m_{d}$, and
+$$
+D^{\mathrm{m}}:=\frac{\partial^{|\mathbf{m}|}}{\partial x_{1}^{m_{1}} \ldots \partial x_{d}^{m_{d}}} .
+$$
+$f \in C^{\mathbf{m}}\left(\mathbb{R}^{d}\right)$ if $D^{\mathbf{k}} f \in C\left(\mathbb{R}^{d}\right)$ for all $\mathbf{k} \leq \mathbf{m}, \mathrm{k} \in \mathbb{Z}_{+}^{d}$, where $C\left(\mathbb{R}^{d}\right)=\left\{f: \mathbb{R}^{d} \rightarrow\right.$ $\mathbb{R} \mid f$ is continuous $\}$ .
+
+Pinkus给出了如下的单隐藏层神经网络的逼近定理：
+$$
+D^{\mathrm{m}}:=\frac{\partial^{|\mathbf{m}|}}{\partial x_{1}^{m_{1}} \ldots \partial x_{d}^{m_{d}}} .
+$$
+We say $f \in C^{\mathbf{m}}\left(\mathbb{R}^{d}\right)$ if $D^{\mathbf{k}} f \in C\left(\mathbb{R}^{d}\right)$ for all $\mathbf{k} \leq \mathbf{m}, \mathrm{k} \in \mathbb{Z}_{+}^{d}$, where $C\left(\mathbb{R}^{d}\right)=\left\{f: \mathbb{R}^{d} \rightarrow\right.$ $\mathbb{R} \mid f$ is continuous $\}$ is the space of continuous functions. Then we recall the following theorem of derivative approximation using single hidden layer neural networks due to Pinkus [44].
+
+ Let $\mathbf{m}^{i} \in \mathbb{Z}_{+}^{d}, i=1, \ldots, s$, and set $m=\max _{i=1, \ldots, s}\left|\mathbf{m}^{i}\right|$. Assume $\sigma \in C^{m}(\mathbb{R})$ and that $\sigma$ is not a polynomial. Then the space of single hidden layer neural nets
+$$
+\mathcal{M}(\sigma):=\operatorname{span}\left\{\sigma(\mathbf{w} \cdot \mathbf{x}+b): \mathbf{w} \in \mathbb{R}^{d}, b \in \mathbb{R}\right\}
+$$
+is dense in
+$$
+C^{\mathbf{m}^{1}, \ldots, \mathbf{m}^{s}}\left(\mathbb{R}^{d}\right):=\cap_{i=1}^{s} C^{\mathbf{m}^{i}}\left(\mathbb{R}^{d}\right),
+$$
+i.e., for any $f \in C^{\mathbf{m}^{1}, \ldots, \mathbf{m}^{s}}\left(\mathbb{R}^{d}\right)$, any compact $K \subset \mathbb{R}^{d}$, and any $\varepsilon>0$, there exists a $g \in \mathcal{M}(\sigma)$ satisfying
+$$
+\max _{\mathbf{x} \in K}\left|D^{\mathbf{k}} f(\mathbf{x})-D^{\mathbf{k}} g(\mathbf{x})\right|<\varepsilon
+$$
+for all $\mathbf{k} \in \mathbb{Z}_{+}^{d}$ for which $\mathbf{k} \leq \mathbf{m}^{i}$ for some $i$.
+
+上述定理表明当我们的神经网络拥有足够多的神经元后，它可以一致逼近任何函数和其偏导数。然后在实际应用中，神经元个数总是有限的。令$\mathcal{F}$ 表示我们的神经网络能表示的函数族，一般来说PDEs的解$u$不太可能属于$\mathcal{F}$，定义$u_{\mathcal{F}}=\arg \min _{f \in \mathcal{F}}\|f-u\|$ ，作为$u$的“最佳逼近“神经网络。而由于我们只在训练集$\mathcal{T}$上训练我们的神经网络，定义$u_{\mathcal{T}}=\arg \min _{f \in \mathcal{F}} \mathcal{L}(f ; \mathcal{T})$为loss最小的神经网络。为了简单起见，假设$u,u_{\mathcal{F}},u_{\mathcal{T}}$都存在且唯一。通过最小化loss寻找$u_\mathcal{T}$往往需要很复杂的计算，我们的优化器返回一个近似解$\hat{u}_\mathcal{T}$。
+
+至此，我们可以拆解the total error $\mathcal{E}$:
+$$
+\mathcal{E}:=\left\|\tilde{u}_{\mathcal{T}}-u\right\| \leq \underbrace{\left\|\tilde{u}_{\mathcal{T}}-u_{\mathcal{T}}\right\|}_{\mathcal{E}_{\text {opt }}}+\underbrace{\left\|u_{\mathcal{T}}-u_{\mathcal{F}}\right\|}_{\mathcal{E}_{\mathrm{gen}}}+\underbrace{\left\|u_{\mathcal{F}}-u\right\|}_{\mathcal{E}_{\text {app }}} .
+$$
+逼近误差$\mathcal{E}_{\text {app }}$ 表示$u$和$u_\mathcal{F}$的接近程度。而泛化误差$\mathcal{E}_{\text {gen }}$取决于残差点的数量和位置 以及 函数族$\mathcal{F}$的表示能力。
+
+更大的神经网络拥有更小的逼近误差，然而可能导致泛化误差增大，这种现象被称为bias-variance tradeoff。
+
+当泛化误差占据主导地位时，会发生过拟合。除此之外，优化误差$\mathcal{E}_{opt}$源于损失函数的复杂性和优化设置，如学习率和迭代次数。然而，目前还没有关于PINNs的严格的误差估计，甚至对监督学习的三种误差进行量化仍然是一个开放的研究问题。
+
+# 5. PINNs若干优化方案
+
+​		PINNs的优化方案主要分别2个方向：1.算法 2.模型结构
+
+## 5.1 算法策略
+
+1. loss加权，正如2.3中讨论的那样
+
+2. 自适应激活函数可能可以加速训练或者以及remov bad minima。
+
+   Locally  Adaptive  Activation  Func-tions with Slope Recovery Term for Deep and Physics-Informed Neural Networks, preprint,https://arxiv.org/abs/1909.12228, 2019.  (Cited on p. 213)](),
+
+   Adaptive activation functions accel-erate  convergence  in  deep  and  physics-informed  neural  networks, J. Comput. Phys., 404(2020), art. 109136.  (Cited on p. 213)
+
+3. Residual-Based Adaptive Redefine（RAR）
+
+   Lu, L. , et al. "DeepXDE: A deep learning library for solving differential equations." SIAM Review 63.1(2021):208-228.
+
+   RAR方案的思想是：每次训练结束后，测量子区域的PDE残差，在PDE残差最大的子区域加入更多的残差点。主要是应对某个区域的梯度很陡的情况。
+
+4. 融合传统格式
+
+   例如：使用有限差分格式代替PINNs中的自动微分项。
+   $$
+   || \frac{f_{\theta}(x_i+h) -2f_{\theta}(x_i) + f_{\theta}(x_i-h)}{2h} - g(x_i)||\\
+$$
+   代替损失函数中的自动微分：$||\Delta f_{\theta}(x_i) - g(x_i)||$。
+   
+从而避免了高阶自动微分格式的使用，从结果来看，这种避免了自动微分的方式会使得训练过程更加鲁棒。这并不需要拘泥于真正的差分格式，也就是均匀网格上的差分格式。具体的处理比如残差点的选取，差分格式配点  的选择也都会影响结果。一个比较有趣的现象是：对于某些方程不稳定的差分格式，在融合格式中也能起到加速作用，这大大提升了算法设计的灵活度。
+   
+https://blog.csdn.net/c9Yv2cf9I06K2A9E/article/details/122934575
+
+## 5.2 模型结构
+
+
+
+在 PDE 的数值求解中，可能会遇到区域较复杂的问题。单个神经网络能表达的容量也是有极限的，要在更复杂的区域上对解进行表达，要么增大网络，也就是在一个网络上增加深度和宽度，但对 PINN 通常使用的 MLP 进行这样的操作可能会带来梯度爆炸或者梯度消失之类的问题，使得求解变得更为困难。因此，借用传统 PDE 求解中区域分解技术，让不同的网络对不同的区域进行学习，从而降低单个神经网络需要的复杂度和学习难度。
+
+
+
+1. **对时间域分解。**
+
+Meng, Xuhui, et al. "PPINN: Parareal physics-informed neural network for time-dependent PDEs." Computer Methods in Applied Mechanics and Engineering 370 (2020): 113250.
+
+<center>
+    <img src="./Picture/subTime.png" style="zoom:50%;">
+</center>
+
+2. **对空间域分解：不同的NN代表子区域的解。**
+
+Moseley, Ben, Andrew Markham, and Tarje Nissen-Meyer. "Finite Basis Physics-Informed Neural Networks (FBPINNs): a scalable domain decomposition approach for solving differential equations." arXiv preprint arXiv:2107.07871 (2021).
+
+<center>
+    <img src="./Picture/subNN.png" style="zoom:100%;">
+</center>
+
+3. **边界条件处理——解结构优化**
+
+把神经网络看做函数 NN(X)；构造边界函数BC(X)：当X∈边界时，BC为边界值，否则为0；构造 L(X)，当X∈边界时，L(X)=0.
+
+令  $\hat{u}(X) = BC(X) + L(X) * NN(X) $, 此函数严格满足边界条件。借助$\hat{u}$计算域内残差点的loss，训练NN。
+
+例如：
+
+当边界条件是$u(0)=u(1)=0 \ with\  \Omega  = [0,1]$, 我们可以简单地令近似解为 $\hat{u}(x) =x(x - 1)NN(x) $。
+
+但问题是是否有通用的BC(X)和L(X)的构造方式？
+
+
+
+对于复杂的边界条件，也有人提出使用独立NN代替BC(X)
+
+<center>
+    <img src="./Picture/BC_NN.png" style="zoom:50%;">
+</center>
+
+4. **浅层网络**
+
+我们知道高阶导数使得PINNs优化速度变慢。还有一个原因是网络深度，一般提到PINNs，都会把它归类到DeepLearning中，也就是需要很多隐藏层的神经网络，而多层的网络是造成 PINN 本身非线性非凸难以求解的主要原因。为了更快速地求解 PINN，又有研究者将目光放回到浅层网络中，也就是结合了极限学习机（Extreme Learning Machine，简称 ELM）的内嵌物理知识极限学习机（Physics Informed ELM，简称 PIELM），这种方法看起来非常粗暴，就一个隐藏层，而且隐藏层的输入参数进行随机初始化后被固定不再需要更新：
+
+Dwivedi, V., & Srinivasan, B. (2020). Physics informed extreme learning machine (pielm)–a rapid method for the numerical solution of partial differential equations. Neurocomputing, 391, 96-118.
+
+---
+
+# 6.总结
+
+自Raissi等人在2018年 [Physics-informed neural networks](https://github.com/maziarraissi/PINNs)中提出了PINN，该算法的研究已经过去5年了，由于PINN算法本身也比较容易实现，现在已经有若干个PINN的求解器了。
+
+- DeepXDE，布朗大学 Lu 博士开发的，就是 DeepONet 那位 Lu 博士。他们组是本次 PINN 潮流的先驱，应该算是第一款也是“官方”的 PINN 求解器。集成了基于残差的自适应细化（RAR），这是一种在训练阶段优化残差点分布的策略，即在偏微分方程残差较大的位置添加更多点。还支持基于构造实体几何 （CSG） 技术的复杂几何区域定义。
+- NeuroDiffEq，基于 PyTorch。NeuroDiffEq 通过硬约束来构造 NN 满足初始/边界条件，细分下来叫 PCNN（Physics Constrained Neural Network），由于要设计特定的边界，这种方式会受限于对边界的具体形式。
+
+- TensorDiffEq，看名字就知道是基于 Tensorflow，特点是做分布式计算。主旨是通过可伸缩（scalable）计算框架来求解 PINN，明显是为大规模工业应用做铺垫。
+
+等等。
+
+
+
+高维的PDEs在物理、工程和金融等方面的应用中都有重要的意义，PINNs作为一种通用的算法，可以求解各式各样的PDEs方程。然而天下没有免费的午餐，与根据特定PDEs设计的传统数值方法对比，PINNs在解的精度和速度方法都没有优势。因此，与”传统“方法结合来加速PINNs应该是研究方向。当然了，融合传统格式的PINNs算法肯定会复杂化。
+
+---
+

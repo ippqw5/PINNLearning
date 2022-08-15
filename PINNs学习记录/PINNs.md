@@ -102,7 +102,7 @@ def train_step(self,data):
         loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
         #这里用到的 self.compiled_loss() 就是 Model.compile(loss) 传入的loss
         #即 Model.compile() 作用是让 self.compiled_loss = loss
-                     
+                   
 	# Compute gradients
     trainable_vars = self.trainable_variables
     gradients = tape.gradient(loss, trainable_vars)
@@ -138,7 +138,7 @@ loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 
 **因为我们有不同格式的训练数据（带标签和不带标签）、复杂的loss函数（不仅仅需要y，y_pred，还需要y_pred对x，t的导数），所以在这种情况下，仍然使用fit（）代码框架，需要大刀阔斧地修改。还不如自己写训练过程，不去使用所谓的高阶API~~**
 
-### `<font color='blue'>`2.子类化Sequential() / Model() , 定义 MyPinn，自定义训练过程`</font>`
+### `<font color='blue'>`2.子类化Sequential() / Model() , 定义 MyPinn，自定义训练过程 `</font>`
 
 之前讨论过**步骤1：使用Sequential搭建模型** 是没有问题的，我们需要做的仅仅是重新定义**训练过程**。
 
@@ -147,7 +147,7 @@ loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 ```python
 class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
     def __init__(self,name = None):
-      
+    
         super(MyPinn, self).__init__(name=name)
         self.nu = tf.constant(0.01/np.pi)
   
@@ -177,13 +177,13 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
             tape.watch([x,t])
             X = tf.stack([x,t],axis=-1)
             u = self(X)  
-            u_x = tape.gradient(u,x)       
-          
+            u_x = tape.gradient(u,x)     
+        
         u_t = tape.gradient(u, t)   
         u_xx = tape.gradient(u_x, x)
-      
+    
         del tape
-      
+    
         f = u_t + (self(X_f_train))*(u_x) - (self.nu)*u_xx
 
         loss_f = tf.reduce_mean(tf.square(f))
@@ -194,35 +194,35 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
     def loss_Total(self,X_u_train,u_train,X_f_train):
         loss_u = self.loss_U(X_u_train,u_train)
         loss_f = self.loss_PDE(X_f_train)
-      
+    
         loss_total = loss_u + loss_f
-      
+    
         return loss_total
   
     @tf.function
     def train_step(self,X_u_train,u_train,X_f_train):
         with tf.GradientTape(persistent=True) as tape:
             loss_total = self.loss_Total(X_u_train,u_train,X_f_train)
-                 
+               
         trainable_vars = self.trainable_variables
         gradients = tape.gradient(loss_total, trainable_vars)
-      
+    
         del tape
-      
+    
         self.optimizer.apply_gradients(zip(gradients, trainable_vars))
         return loss_total
   
     def train_model(self, X_u_train,u_train,X_f_train, epochs=100):
         for epoch in tf.range(1,epochs+1):
             loss_total = self.train_step(X_u_train,u_train,X_f_train)
-            if epoch % 10 == 0:              
+            if epoch % 10 == 0:            
                 print(
                     "Training loss (for per 10 epoches) at epoch %d: %.4f"
                     % (epoch, float(loss_total))
                 )
 ```
 
-`<font color='purple'>` **在当前文件夹 myPINN.py 进行了train_model测试，成功运行**`</font>`
+`<font color='purple'>` **在当前文件夹 myPINN.py 进行了train_model测试，成功运行** `</font>`
 
 > 以上内容截止至 6-30 markdown
 
@@ -230,7 +230,7 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
 
 # 07-01
 
-### `<font color='blue'>`优化器`</font>`
+### `<font color='blue'>`优化器 `</font>`
 
 tf.keras.optimizers为我们提供了许多现成的优化器，比如SGD（最速下降）、Adam、RMSprop等等。
 
@@ -244,10 +244,9 @@ tf.keras.optimizers.Optimizer()主要提供了两种Methods，为我们的参数
    **grads_and_vars, name=None, experimental_aggregate_gradients=True**
    **)**
 
-    之前定义的MyPinn.train_step()中就使用了这种Method。
+   之前定义的MyPinn.train_step()中就使用了这种Method。
 
-    我们先计算出grads，再使用apply_gradient()，进行参数优化。
-
+   我们先计算出grads，再使用apply_gradient()，进行参数优化。
 2. **minimize(**
    **loss, var_list, grad_loss=None, name=None, tape=None**
    **)**
@@ -362,16 +361,15 @@ tfp.optimizer.lbfgs_minimize(
    part帮助我们params_1d变回weights和bias,并更新MyPinn中的参数。
 4. 定义一个func函数,func(params_1d)
 
-    Input:  params_1d
+   Input:  params_1d
 
-    Output: loss , gradients
+   Output: loss , gradients
 
-    Inside：先把 params_1d 转变回 MyPinn 中 weights,bias 的shape，并更新它们。
+   Inside：先把 params_1d 转变回 MyPinn 中 weights,bias 的shape，并更新它们。
 
-    使用MyPinn中已定义的loss_Total()方法计算loss 和 gradients。
+   使用MyPinn中已定义的loss_Total()方法计算loss 和 gradients。
 
-    注意：需要将 gradients 也扁平化 再return。( gradients.shape = [weights,bias].shape,故也可以用idx扁平化 )
-
+   注意：需要将 gradients 也扁平化 再return。( gradients.shape = [weights,bias].shape,故也可以用idx扁平化 )
 5. 将第一步提取出来的weights 和 bias 扁平化处理，作为initial_position
 6. 调用tfp.optimizer.lbfgs_minimize(func,initial_position)即可！
 
@@ -449,7 +447,7 @@ def loss_PDE(self,X_f_train): #我的定义
 
 ```python
 def loss_PDE(self,X_f_train): #code的定义
-    
+  
       x = X_f_train[:,0:1] # x.shape = (nums,2)
       t = X_f_train[:,1:2] # t.shape = (nums,2)
       with tf.GradientTape(persistent=True) as tape:
@@ -516,7 +514,7 @@ ANN: artificial neural network
 
 2. **边界吸收型**
 
-    边界吸收型的思想是：把神经网络看做函数 ANN(X)；构造边界函数BC(X)：当X∈边界时，BC为边界值，否则为0；构造 L(X)，当X∈边界时，L(X)=0.
+   边界吸收型的思想是：把神经网络看做函数 ANN(X)；构造边界函数BC(X)：当X∈边界时，BC为边界值，否则为0；构造 L(X)，当X∈边界时，L(X)=0.
 
 令试解  $y_t = BC(X) + L(X) * ANN(X) $, 此函数严格满足边界条件。再通过域内点计算$MSE_{pde}$，更新ANN。
 
@@ -729,7 +727,6 @@ $$
 
 这种”自适应“策略有很多，想怎么构造就怎么构造，要抓的点就是根据以前的loss，动态地调整权重，使得当前步倾向训练于前N步中较大的 **子loss** 。
 
-
 ---
 
 # 07-21
@@ -740,7 +737,7 @@ $$
 2. 耦合训练——Adam算法
 3. 耦合训练——LBFGS算法
 
-**代码见0721_自适应&LBFGS_Parabolic耦合模型.ipynb**`<br />`比较Adam算法和LBFGS算法的训练表现。`<br />`（有必要深入了解Adam的性质，在训练后期表现远不如LBFGS）
+**代码见0721_自适应&LBFGS_Parabolic耦合模型.ipynb** `<br />`比较Adam算法和LBFGS算法的训练表现。`<br />`（有必要深入了解Adam的性质，在训练后期表现远不如LBFGS）
 
 # 07-22
 
@@ -776,7 +773,7 @@ $$
 
 ## 参数反问题
 
-    参数反问题是指已知部分、乃至全部真解，反推模型的参数，以传统方法来说，这是很困难的，但在PINN框架下，只需要将模型参数设为变量，带入真解训练模型（同时训练参数），可以反推参数。
+    参数反问题是指已知部分、乃至全部数值真解，反推模型的参数，以传统方法来说，这是很困难的，但在PINN框架下，只需要将模型参数设为变量，带入真解训练模型（同时训练参数），可以反推参数。
 
 代码见 **0723_参数反问题_Parabolic耦合模型.ipynb**
 
