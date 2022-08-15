@@ -16,7 +16,9 @@
 
 | 日期            | 学习内容                                                     | 备注                                                         |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| 8.8             | 实验成果                                                     | main/0808_3D_Parabolic耦合模型.ipynb                         |
+| 8.15            | 3D_Parabolic区域反问题                                       | main/3D_Parabolic区域反问题.ipynb                            |
+| 8.13-14         | cPINNs报告                                                   | main/cPINNs报告.md                                           |
+| 8.8             | 实验成果                                                     | main/3D_Parabolic正问题.ipynb                                |
 | 8.5             | 各种优化算法学习                                             | 记录 随机梯度下降、牛顿法、动量法、Nesterov、AdaGrad、RMSprop、Adam、Nadam的原理。更新PINN学习记录。 |
 | 8.4             | DeepXDE论文阅读(3)                                           | 完结DeepXDE论文，更新PINN学习记录。                          |
 | 8.3             | DeepXDE论文阅读(2)                                           | 阅读DeepXDE论文，更新PINN学习记录。                          |
