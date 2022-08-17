@@ -660,7 +660,7 @@ $$
 
   Adam训练4000次，batch=10。
 
-  L-BFGS训练2000次。
+  L-BFGS训练2000次。(重采样策略，L-BFGS后1000次换了一批点)
 
 - **训练结果**
 
@@ -668,10 +668,19 @@ $$
 
   $Test\ Error\ For \ u2:  0.05147215723991394$
 
-  <figure class="half">
-      <img src="./Picture/3d_parabolic_surface_real.png">,
-      <img src="./Picture/3d_parabolic_surface_pred_inverse_P.png">
-  </figure>
+<center>
+    <img src="./Picture/3d_parabolic_surface_real.png">
+    <img src="./Picture/3d_parabolic_surface_pred_区反_resampling.png"
+</center>
+
+
+
+<center>
+    <img src="./Picture/3d_parabolic_scatter_u1_区反_resampling.png">
+    <img src="./Picture/3d_parabolic_scatter_u2_区反_resampling.png">
+</center>
+
+
 
 ---
 
@@ -744,10 +753,15 @@ $$
 
   - $(\nu_1,\nu_2)=(1.0386709335362476, 1.0216908669904),真值均为1,初值均为0.5$
 
-  <figure class="half">
+  <center>
+      <img src="./Picture/3d_parabolic_surface_real.png">,
+      <img src="./Picture/3d_parabolic_surface_pred_inverse_P.png">
+  </center>
+  
+  <center>
       <img src="./Picture/3d_parabolic_scatter_u1_inverse_P.png">,
       <img src="./Picture/3d_parabolic_scatter_u2_inverse_P.png">
-  </figure>
+  </center>
 
 # 4. 收敛性
 
