@@ -257,7 +257,7 @@ tf.keras.optimizers.Optimizer()主要提供了两种Methods，为我们的参数
 
 **为了精准地控制优化过程，并在优化过程中加上一些别的操作，我们使用 第1种方法 对参数进行优化。**
 
-### `<font color='blue'>`  Adam & L-BFGS `</font>`
+### `<font color='blue'>  Adam & L-BFGS </font>`
 
 Adam优化器在deep neural network中具有广泛的应用。之前也说过，tf.keras.optimizers里内置了Adam优化器，我们直接调用就好。
 
@@ -380,15 +380,15 @@ tfp.optimizer.lbfgs_minimize(
 # 07-04
 
     今天主要添加了 Data Preparation 和 Plot 的代码。并且，按日期命名，将代码分开在不同的NoteBook。
-
+    
     使用下面链接中的训练数据。
-
+    
     [Optimize TensorFlow &amp; Keras models with L-BFGS from TensorFlow Probability | import pyChao](https://pychao.com/2019/11/02/optimize-tensorflow-keras-models-with-l-bfgs-from-tensorflow-probability/)
-
+    
     不过，我在使用MyPinn训练Burgers Equation，训练结果不太理想。一开始，我怀疑是，float32格式**And** tfp中lbfgs与Scipy中lbfgs的差别。debug了很久，发现不是这些原因。
-
+    
     因为上面的链接中，作者也有用tfp中的lbfgs训练模型，我运行了一遍，仍然可以达到很好的效果，看来还需要debug(恼。
-
+    
     题外话，使用Google colab可以白嫖算力，将.ipynb文件上传，可以在云端计算，还免费，而且我的电脑内存有时候不太够用，所以colab就很nice。
 
 > 以上内容截止至 7-4 markdown
@@ -519,7 +519,7 @@ ANN: artificial neural network
 令试解  $y_t = BC(X) + L(X) * ANN(X) $, 此函数严格满足边界条件。再通过域内点计算$MSE_{pde}$，更新ANN。
 
     **BC(X),L(X)的构造方法：**
-
+    
     `<img src='./Data/BC_ODE.png'>`
 
 <img src='./Data/BC_PDE.png'>
@@ -575,9 +575,9 @@ ANN: artificial neural network
 ## 小批量训练模式实验
 
     阅读一篇论文，关于pde耦合模型的数值求解方法。
-
+    
     PARTITIONED TIMESTEPPING FOR A PARABOLIC TWO DOMA.pdf
-
+    
     试了下小批量训练。将全部训练数据**n等分后**，进行小批量训练。在相同的epochs下，小批量训练效果比原来好。效果见"7_8_myPINN_Burgers.ipynb"
 
 ---
@@ -611,9 +611,9 @@ ANN: artificial neural network
 ## 训练parabolic耦合pde的PINN模型
 
     u1拟合的比较好。u2拟合效果很差，特别是在边界处。
-
+    
     正在研究，不知是代码有错，还是说因为u2表达式比较复杂，有y的二次项。
-
+    
     训练代码见**7_11_Parabolic耦合pde模型.ipynb**
 
 ---
@@ -648,7 +648,7 @@ ANN: artificial neural network
 ## 代码 & 论文阅读
 
     学习TensorFlow2.0 Metric评估函数 ，代码见“**tensorflow学习记录/12_Metric.ipynb**”
-
+    
     阅读 [Deep Learning-An Introduction](../论文资料/Deep Learning-An Introduction.pdf )。这篇文章从数学角度，从零开始介绍Deep Learning，是一篇介绍性的文章。
 
 ---
@@ -673,25 +673,25 @@ loss_{u2} := loss_{u2}^{bc} + loss_{u2}^{f} + loss_{u2}^{i} \\
 $$
 
     其中$\alpha_i$就是自适应因子。
-
+    
     考虑到实际训练过程中，u1和u2的loss大小不一样，**”优先“**训练loss较大的一方，即在$loss_{ui}$前乘上一个较大的因子，使其在整个**$Loss$**中占比更大，从而达到优先训练的目标。
 
 ### **什么是自适应权重 Self-Adaptive-Weight？**
 
     把$\alpha_1,\alpha_2$也看做变量。在训练模型参数的过程中，我们使用的梯度下降算法，是基于“负梯度”。
-
+    
     如果使用**“正梯度”**去改变$\alpha_1,\alpha_2$，能够使得$loss_{ui}$对应的$\alpha_{i}$更大。
-
+    
     实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$,
 
 ### 加权策略
 
     对$loss_{u1} 和 loss_{u2}$ 加权的**目的**：使得损失较大的一方在整个loss中的贡献更大，使得神经网络倾向于训练损失更大的一方。
-
+    
     值得注意的是，如果两个神经网络之间没有联系，即$loss_{u1}(x_1;\theta_1) , loss_{u2}(x_2;\theta_2) $的自变量$(x_1,\theta_1),(x_2,\theta_2)$之间没有重合的部分，那么对$loss_{u1} 和 loss_{u2}$ 加权实际上是没有"效果"的。
-
+    
     原因是，如果两个神经网络之间没有联系时，那么我们对$Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2}$求关于$\theta_{1}$的导数，$\frac{\partial loss}{\partial \theta_1} =\alpha_1 *  \frac{\partial loss_{u1}}{\partial \theta_1}$，可以发现与$\theta_2$无关，即跟第二个神经网络无关，只是在训练单个神经网络而已，而对单个神经网络的loss乘以一个数，实际是没有用的，相当于对优化问题中目标函数乘上一个常数，显然不影响我们寻找最优解。
-
+    
     因此，此处的$loss_{u1},loss_{u2}$具体为：
 
 $$
@@ -744,19 +744,19 @@ $$
 ## 区域反问题
 
     流体力学领域还存在各种各样的反问题，比如物理模型的初边值 条件是未知的，取而代之的是已知内部部分区域或部分物理量的数值真解，以此 反推整个区域的流体运动情况；或者，物理模型的方程本身具有一些未知参数， 需要通过真实的数值结果进行反推。这类问题在工程应用中具有很大意义，然而 各种传统方法对此类问题的求解具有一定的难度，在本文神经网络求解的框架 下，却很容易对该类反问题尝试进行求解。
-
+    
     使用之前的Parabolic 耦合PDE模型进行区域反问题的实验。
 
 对**区域1{(x,y)|0<=x<=1,0<=y<=1}**的划分为：
 
     regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
-
+    
     regions_y = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
 
 对**区域2{(x,y)|0<=x<=1,-1<=y<=0}**的划分为：
 
     regions_x = [ [0.10,0.30],[0.40,0.60],[0.70,0.90] ]
-
+    
     regions_y = [ [-0.10,-0.30],[-0.40,-0.60],[-0.70,-0.90] ]
 
 3 * 3 = 9，每个区域被分为9个子区域
@@ -891,7 +891,7 @@ DeepXDE&TensorDiffEq是现有的PINN求解器。
 ## 3D-parabolic代码编写
 
     在2d基础上新增一个维度即可，即在神经网络的输入Input层新增一个维度and增加对z的偏导。注意训练数据的生成以及图像生成需要略微改动。
-
+    
     实验效果见**0727_3D_Parabolic耦合模型.ipynb**
 
 > 因为增加一个维度，训练的难度有所上升，
@@ -1751,3 +1751,30 @@ AdaGrad(RMSprop)方法只考虑修正学习率，实际上可以把AdaGrad方法
 而AdaGrad(RMSprop) 与 Nesterov结合就是 Nadam方法。
 
 [随机梯度下降、牛顿法、动量法、Nesterov、AdaGrad、RMSprop、Adam、Nadam](https://www.bilibili.com/video/BV1r64y1s7fU)
+
+---
+
+# 08-08
+
+写代码3D_parabolic正问题。训练神经网络。
+
+# 08-12 - 08-14
+
+写代码3D_parabolic反问题 + 写cPINNs报告
+
+# 08-15
+
+观看 学术会议Mathematical and Scientific Machine Learning
+
+MSML2022于2022年8月15至17日在线上举行，本届会议由北京大学数学科学学院、北京大学国际机器学习研究中心、北京大学北京国际数学研究中心主办，上海交通大学自然科学研究院、新加坡国立大学数学系、中国科学院物理研究所协办。
+
+听了DeepONet的发明人**Lu Lu**的报告。
+
+---
+
+# 08-17
+
+编写3D_Parabolic参数反问题代码，主要是调试，跑模型用一天，逆天。
+
+写cPINNs报告.md
+

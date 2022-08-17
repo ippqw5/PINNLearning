@@ -3,7 +3,7 @@
 [toc]
 
 ## 引言
-​	本文是我在暑期研究PINNs求解耦合PDEs的研究报告。**在Section1中**，我将从数学的角度描述神经网络，什么是深度学习，以及用数学的语言描述机器学习中的概念，包括神经元、层、权重和偏置、loss、优化器、训练等概念。**在Section2.1中**，我将介绍PINNs(Physcis-Informed Neural Networks)的核心思想：如何使用神经网络求解PDEs，以及PINNs的算法框架，并给出PINNs求解Burgers方程的算例来体现PINNs的威力。**在Section2.2中**，我将介绍cPINNs(c : coupled)，即求解耦合问题的PDEs的PINNs模型，我将给出c-PINNs模型结构和求解算法.**在Section2.3中**，我将使用cPINNs求解两个耦合PDEs模型。首先，使用cPINNs求解一个具有解析解的2D-parabolic耦合PDEs模型 。之后，给出一种自适应权重的cPINNs(self-adaptive-weighted-cPINNs)，以一个具有解析解的3D-parabolic耦合PDEs模型为例，对比cPINNs与self-adaptive-weighted-cPINNs，同时展现PINNs处理不同维数PDEs问题的一致性。**在Section3中**，介绍PINNs求解反问题，对于PINNs来说，正问题与反问题的求解几乎是一样的，只需略微修改核心代码，就可以将PINNs应用于各类反问题的求解，并给出上述2D-parabolic耦合PDEs模型的**区域反问题和参数反问题**算例。**在Section4中**，我将会讨论PINNs的收敛性问题、逼近理论。**在Section5中**，我会给出若干种PINNs的优化方案。在本文最后，我介绍一下几个现有的PINNs求解器。
+​	本文是我在暑期研究PINNs求解耦合PDEs的研究报告。**在Section1中**，我将从数学的角度描述神经网络，什么是深度学习，以及用数学的语言描述机器学习中的概念，包括神经元、层、权重和偏置、loss、优化器、训练等概念。**在Section2.1中**，我将介绍PINNs(Physcis-Informed Neural Networks)的核心思想：如何使用神经网络求解PDEs，以及PINNs的算法框架，并给出PINNs求解Burgers方程的算例来体现PINNs的威力。**在Section2.2中**，我将介绍cPINNs(c : coupled)，即求解耦合问题的PDEs的PINNs模型，我将给出c-PINNs模型结构和求解算法.**在Section2.3中**，我将使用cPINNs求解两个耦合PDEs模型。首先，使用cPINNs求解一个具有解析解的2D-parabolic耦合PDEs模型 。之后，给出一种自适应权重的cPINNs(self-adaptive-weighted-cPINNs)，以一个具有解析解的3D-parabolic耦合PDEs模型为例，对比cPINNs与self-adaptive-weighted-cPINNs，同时展现PINNs处理不同维数PDEs问题的一致性。**在Section3中**，介绍PINNs求解反问题，对于PINNs来说，正问题与反问题的求解几乎是一样的，只需略微修改核心代码，就可以将PINNs应用于各类反问题的求解，并给出上述2D/3D-parabolic耦合PDEs模型的**区域反问题和参数反问题**算例。**在Section4中**，我将会讨论PINNs的收敛性问题、逼近理论。**在Section5中**，我会给出若干种PINNs的优化方案。在本文最后，我介绍一下几个现有的PINNs求解器。
 
 ​	PINNs的理论部分并不困难，我在暑假对PINNs的研究也更倾向于实验写代码。我在之前完全没有接触过机器学习，我从零开始学习Tensorflow(Python第三方库，一款机器学习框架)，PINNs原作者使用的是Tensorflow1.0版本编写的PINNs代码，如今来到Tensorflow2.0时代，代码风格大变，夸张点说是完全改变。我自学了Tensorflow2.0，从零构建PINNs的代码。
 
@@ -579,6 +579,8 @@ $$
 
 ## 区域反问题
 
+### **2D-Parabolic**
+
 区域反问题：在求解时不提供初边值条件，而是选择区域内部分数值真解作为训练集替代初边值训练集。
 
 对**区域1{(x,y)|0<=x<=1,0<=y<=1}**的划分为：
@@ -626,6 +628,53 @@ $$
       <img src="./Picture/2d_parabolic_区域反问题_pred.png">
   </figure>
 
+---
+
+### **3D-parabolic**
+
+对**区域1{(x,y,z)|0<=x<=1,0<=y<=1,0<=z<=1}**的划分为：
+
+    regions_x = [[0.1,0.35],[0.4,0.65],[0.8,0.95]]
+    regions_y = [[0.1,0.35],[0.4,0.65],[0.7,0.9]]
+    regions_z = [[0.0,0.55],[0.6,0.95]]
+
+对**区域2{(x,y)|0<=x<=1,0<=y<=1,-1<=z<=0}**的划分为：
+
+    regions_x = [[0.1,0.35],[0.4,0.65],[0.8,0.95]]
+    regions_y = [[0.1,0.35],[0.4,0.65],[0.7,0.9]]
+    regions_z = [[-0.95,-0.6],[-0.55,-0.1]]
+
+3 * 3 * 2= 18，每个区域被分为18个子区域
+
+**Configuration：**
+
+- 网络结构为：
+
+  layers = [4,40,40,40,40,40,40,40,1]  7 hidden Dense layers，
+
+- 训练集  $|\mathcal{T}_f^{NN_1}|=|\mathcal{T}_f^{NN_2}|=4000,|\mathcal{T}_u^{NN_1}|=|\mathcal{T}_u^{NN_1}|=4000,|\mathcal{T}_I|=500,其中\mathcal{T}_u代表区域内数值真解$.
+
+- 训练策略：
+
+  **预训练：单区域Adam训练200次。**
+
+  Adam训练4000次，batch=10。
+
+  L-BFGS训练2000次。
+
+- **训练结果**
+
+  $Test\ Error\ For\ u1:  0.06887487322092056 $
+
+  $Test\ Error\ For \ u2:  0.05147215723991394$
+
+  <figure class="half">
+      <img src="./Picture/3d_parabolic_surface_real.png">,
+      <img src="./Picture/3d_parabolic_surface_pred_inverse_P.png">
+  </figure>
+
+---
+
 ## 参数反问题
 
 参数反问题是指已知部分、乃至全部数值真解，反推模型的参数，以传统方法来说，这是很困难的，但在PINN框架下，只需要将模型参数设为变量，带入真解训练模型（同时训练参数），可以反推参数。
@@ -636,7 +685,9 @@ $$
     <img src="./Picture/cPINNs_参数反问题.png"
 </center>
 
+---
 
+### 2D-Parabolic
 
 **Configuration：**
 
@@ -660,14 +711,43 @@ $$
 
   $Test\ Error\ For\ u2:  0.02935$
 
-  $(\nu_1,\nu_2)=(0.99404157288981077, 1.0019246376433226),真解均为1$
+  $(\nu_1,\nu_2)=(0.99404157288981077, 1.0019246376433226),真解均为1,初值均为0$
 
 <figure class="half">
     <img src="./Picture/2d_parabolic_surface_real.png">,
     <img src="./Picture/2d_parabolic_参数反问题_pred.png">
 </figure>
 
+---
 
+### 3D-Parabolic
+
+**Configuration：**
+
+- 网络结构为：
+
+  layers = [4,40,40,40,40,40,40,1]  6 hidden Dense layers，
+
+- 训练集  $|\mathcal{T}_f^{NN_1}|=|\mathcal{T}_f^{NN_2}|=5000,|\mathcal{T}_u^{NN_1}|=|\mathcal{T}_u^{NN_1}|=4000,|\mathcal{T}_I|=400,其中\mathcal{T}_u包括区域内和边界的数值真解$.
+
+- 训练策略：
+
+  Adam训练500次，batch=10。
+
+  L-BFGS训练4000次。
+
+- **训练结果**
+
+  $Test\ Error\ For\ u1:  0.04057949781417847$
+
+  $Test\ Error\ For\ u2:  0.0239503625780344$
+
+  - $(\nu_1,\nu_2)=(1.0386709335362476, 1.0216908669904),真值均为1,初值均为0.5$
+
+  <figure class="half">
+      <img src="./Picture/3d_parabolic_scatter_u1_inverse_P.png">,
+      <img src="./Picture/3d_parabolic_scatter_u2_inverse_P.png">
+  </figure>
 
 # 4. 收敛性
 
@@ -743,8 +823,9 @@ $$
 $$
    代替损失函数中的自动微分：$||\Delta f_{\theta}(x_i) - g(x_i)||$。
    
+
 从而避免了高阶自动微分格式的使用，从结果来看，这种避免了自动微分的方式会使得训练过程更加鲁棒。这并不需要拘泥于真正的差分格式，也就是均匀网格上的差分格式。具体的处理比如残差点的选取，差分格式配点  的选择也都会影响结果。一个比较有趣的现象是：对于某些方程不稳定的差分格式，在融合格式中也能起到加速作用，这大大提升了算法设计的灵活度。
-   
+
 https://blog.csdn.net/c9Yv2cf9I06K2A9E/article/details/122934575
 
 ## 5.2 模型结构
