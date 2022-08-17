@@ -4,6 +4,8 @@
 
 cPINNs报告.md
 
+cPINNs报告.pdf(建议看pdf版，md格式显示bug)
+
 2D/3D算例(正反问题).ipynb
 
 Burgers.ipynb
