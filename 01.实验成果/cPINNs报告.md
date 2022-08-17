@@ -815,10 +815,10 @@ $$
 
 We say $f \in C^{\mathbf{m}}\left(\mathbb{R}^{d}\right)$ if $D^{\mathbf{k}} f \in C\left(\mathbb{R}^{d}\right)$ for all $\mathbf{k} \leq \mathbf{m}, \mathrm{k} \in \mathbb{Z}_{+}^{d}$,  where $C\left(\mathbb{R}^{d}\right)=\left\{f: \mathbb{R}^{d} \rightarrow\right.$ $\mathbb{R} \mid f$ is continuous $\}$ is the space of continuous functions. Then we recall the following theorem of derivative approximation using single hidden layer neural networks due to Pinkus [44].
 
- Let $\mathbf{m}^{i} \in \mathbb{Z}_{+}^{d}, i=1, \ldots, s$, and set $m=\max _{i=1, \ldots, s}\left|\mathbf{m}^{i}\right|$. Assume $\sigma \in C^{m}(\mathbb{R})$ and that $\sigma$ is not a polynomial. Then the space of single hidden layer neural nets
+ Let $\mathbf{m}^{i} \in \mathbb{Z}_{+}^{d}, i=1, \ldots, s$, and set $m=\max _{i=1, \ldots, s} |\mathbf{m}^{i}|$. Assume $\sigma \in C^{m}(\mathbb{R})$ and that $\sigma$ is not a polynomial. Then the space of single hidden layer neural nets
 
 $$
-\mathcal{M}(\sigma):=\operatorname{span}\left\{\sigma(\mathbf{w} \cdot \mathbf{x}+b): \mathbf{w} \in \mathbb{R}^{d}, b \in \mathbb{R}\right\}
+\mathcal{M}(\sigma):=\operatorname{span}\left \{\sigma(\mathbf{w} \cdot \mathbf{x}+b): \mathbf{w} \in \mathbb{R}^{d}, b \in \mathbb{R} \right \}
 $$
 
 is dense in
@@ -840,7 +840,7 @@ for all $\mathbf{k} \in \mathbb{Z}_{+}^{d}$ for which $\mathbf{k} \leq \mathbf{m
 至此，我们可以拆解the total error $\mathcal{E}$:
 
 $$
-\mathcal{E}:=\left\|\tilde{u}_{\mathcal{T}}-u\right\| \leq \underbrace{\left\|\tilde{u}_{\mathcal{T}}-u_{\mathcal{T}}\right\|}_{\mathcal{E}_{\text {opt }}}+\underbrace{\left\|u_{\mathcal{T}}-u_{\mathcal{F}}\right\|}_{\mathcal{E}_{\mathrm{gen}}}+\underbrace{\left\|u_{\mathcal{F}}-u\right\|}_{\mathcal{E}_{\text {app }}} .
+\mathcal{E}:= \| \tilde{u}_{\mathcal{T}}-u \| \leq \underbrace{\left\|\tilde{u}_{\mathcal{T}}-u_{\mathcal{T}}\right\|}_{\mathcal{E}_{\text {opt }}}+\underbrace{\left\|u_{\mathcal{T}}-u_{\mathcal{F}}\right\|}_{\mathcal{E}_{\mathrm{gen}}}+\underbrace{\left\|u_{\mathcal{F}}-u\right\|}_{\mathcal{E}_{\text {app }}} .
 $$
 
 逼近误差$\mathcal{E}_{\text {app }}$ 表示$u$和$u_\mathcal{F}$的接近程度。而泛化误差$\mathcal{E}_{\text {gen }}$取决于残差点的数量和位置 以及 函数族$\mathcal{F}$的表示能力。
