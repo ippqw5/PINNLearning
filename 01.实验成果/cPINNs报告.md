@@ -20,14 +20,18 @@
 ​		什么是神经网络？神经网络就是一个函数。更具体地来说，神经网络是由一堆重复的简单非线性函数(神经元)复合而成的函数。我们将这些重复的简单非线性函数称为激活函数，例如sigmoid，relu，tanh，每一个激活函数对应一个神经元。激活函数是神经网络最基本的单位。
 
 ​		sigmoid函数定义为：
+
 $$
 \sigma(x) = \frac{1}{1+\exp(-x)}
 $$
 
+
 ​		我们可以把$\sigma(x)$看作分段函数的平滑版本，它本身模拟了大脑中神经元的行为，如果输入足够大，就会放电(输出等于1)，否则就保持不活跃(输出等于0)。除此之外，Sigmoid函数还有一个方便的性质，它的导数是：
+
 $$
 \sigma'(x) = (1-\sigma(x))*\sigma(x)
 $$
+
 ​		拥有单个激活函数后(或者称神经元)，我们就可以引入层的概念。简单来说，层是由神经元堆叠而成。也可以将层理解为向量形式的激活函数函数，即 $For \ X \in \R^n ,\sigma : \R^n \rightarrow \R^n$。下图直接展示了具有三个隐藏层的神经网络的结构图：
 
 <center>
@@ -35,20 +39,26 @@ $$
 </center>
 
 ​		其中，$A^{[i]}$代表第i层的神经元向量，$a^{[i]}_j$代表第i层的第j个神经元。在每层中，每个神经元$a^{[i]}_j$都会输出一个实数值，并通过连线传递到下一层的若干个神经元。$a^{[i]}_j$连接到下一层的神经元$a^{[i+1]}_k$的线上 有一个权重$w^{[i+1]}_{jk}$。$a^{[i]}_j$的输出值 乘上$w^{[i+1]}_{jk}$传递到$a^{[i+1]}_k$的输入，实际上$a^{[i+1]}_k$会接收到来自上层的多个神经元的值，$a^{[i+1]}_k$会将这些值全部相加，再加上一个偏置bias $b_k^{[i+1]}$，最终它作为$a^{[i+1]}_k$的输入。
+
 $$
 a^{[i+1]}_k(x)=a^{[i+1]}_k(\sum_{j=1}^n w^{[i+1]}_{jk}*a^{[i]}_j + b^{[i+1]}_k)
 $$
+
 ​		用矩阵表示，记 $A^{[i]} = [a^{[i]}_1,..,a^{[i]}_j,..,a^{[i]}_n]^T,W^{[i]}=(w_{kj})_{n \times n},B^{[i]}=[b^{[i+1]}_1,b^{[i+1]}_2,...,b^{[i+1]}_n]$,则：
+
 $$
 A^{[i+1]}(X) = A^{[i+1]}(W^{[i+1]} * A^{[i]} + B^{[i+1]}) \in \R^n
 $$
+
 ​		那么，令输入层$X=A^{[0]}$,则输出层$A^{[4]}$的输出值就等于：
+
 $$
 A^{[4]}(X) = 
 A^{[4]}(W^{[4]}*A^{[3]}(W^{[3]}*A^{[2]}(W^{[2]}*A^{[1]}(W^{[1]}*X + B^{[1]}) 
 + B^{[2]}) + B^{[3]})+B^{[4]})
 $$
-​		记$NN(X;\theta) = A^{[4]}(X;W,B)$,其中$\theta = \{W,B\},\theta$为神经网络NN中所有权重和偏置的集合，也称$\theta$为神经网络的参数，这是常用写法。
+
+​		记 $NN(X;\theta) = A^{[4]}(X;W,B)$ ,其中 $\theta = \{W,B\},\theta$ 为神经网络NN中所有权重和偏置的集合，也称$\theta$为神经网络的参数，这是常用写法。
 
 ​		至此，我们就可以清楚地看到，神经网络就是一个函数。神经网络是 由非线性的激活函数组成的向量函数(层)，通过权重和偏置，一层层地线性复合。
 
@@ -56,27 +66,29 @@ $$
 
 ​		现在我们拥有了神经网络，问题是如何让神经网络完成各种各样的任务？机器学习学的是什么？训练？
 
-​		以分类猫狗照片为例子。假设有一堆数据 Train_Picture=(X,Y)。X是动物的照片，Y是表示该动物是 Dog or Cat，不妨令Dog = 0，Cat = 1。而每一张动物图片X，都可以数字化(像素点，RBG)，将X作为神经网络NN的Inputs，我们得到一个输出值$\hat{Y} = NN(X;\theta)$.
+​		以分类猫狗照片为例子。假设有一堆数据 Train_Picture=(X,Y)。X是动物的照片，Y是表示该动物是 Dog or Cat，不妨令Dog = 0，Cat = 1。而每一张动物图片X，都可以数字化(像素点，RBG)，将X作为神经网络NN的Inputs，我们得到一个输出值 $\hat{Y} = NN(X;\theta)$ .
 
-​		设定：如果$\hat{Y}<0.5$认为神经网络判断X是狗，如果$\hat{Y}>0.5$认为神经网络判断X是猫。
+​		设定：如果 $\hat{Y}<0.5$ 认为神经网络判断X是狗，如果 $\hat{Y}>0.5$ 认为神经网络判断X是猫。
 
 ​		令损失函数 loss 等于：
+
 $$
 loss(\theta) = \sum_{i=1}^n (NN(X_i;\theta)- Y_i)^2 = \sum_{i=1}^n(\hat{Y_i}-Y_i)^2
 $$
-​		其中，$X_i$代表第i张照片，$Y_i$代表$X_i$是Dog or Cat( =0 or =1)，n代表数据集大小。
 
-​		我们想要做得就是令$\hat{Y_i}$尽可能接近$Y_i$,当然只有一个数据满足是不够的，我们需要一堆数据输入到NN中，输出的结果尽可能都正确。那么，公式(7)提供的loss函数描述了若干张照片的真解和NN预测的解之间的差距，应该想办法调整$\theta$(神经网络中参数)，让loss尽可能小。
+​		其中，$X_i$ 代表第i张照片，$Y_i$代表$X_i$是Dog or Cat( =0 or =1)，n代表数据集大小。
+
+​		我们想要做得就是令 $\hat{Y_i}$ 尽可能接近 $Y_i$ ,当然只有一个数据满足是不够的，我们需要一堆数据输入到NN中，输出的结果尽可能都正确。那么，公式(7)提供的loss函数描述了若干张照片的真解和NN预测的解之间的差距，应该想办法调整 $\theta$ (神经网络中参数)，让loss尽可能小。
 
 ​		从数学的角度看，让神经网络能够识别图像，本质上是让神经网络找到图像与类别之间的函数关系。
 
-​		32x32x3的一张狗的照片对应一个3072维的向量X，X通过某个函数$f^\star$映射到数字0(0是人为规定的)。那么，神经网络就是在做一个3072维的函数拟合,我们想要找到$f$,使得$f,f^\star$在某种意义很接近。
+​		32x32x3的一张狗的照片对应一个3072维的向量X，X通过某个函数$f^\star$映射到数字0(0是人为规定的)。那么，神经网络就是在做一个3072维的函数拟合,我们想要找到 $f$ ,使得$f,f^\star$ 在某种意义很接近。
 
 ​		从这个意义上将，神经网络是一种强大的函数逼近器(成功案例太多)。鄂维南院士在2022年7月的国际数学家大会（International Congress of Mathematicians，ICM）展开报告，讨论数学家视角下的机器学习，从理论层面介绍了单隐藏的神经网络能够逼近的函数族"barron空间"等相关理论证明，他认为Machine Learning 打开了数学高维分析的研究领域，Machine Learning就是数学。
 
 ## **1.3 训练以及优化器**
 
-​		从数学视角来看，训练神经网络 = 最优化过程。目标函数就是$loss(\theta)$，训练过程=最小化$loss(\theta)$
+​		从数学视角来看，训练神经网络 = 最优化过程。目标函数就是$loss(\theta)$，训练过程=最小化 $loss(\theta)$ 
 
 ​		得益于软件与硬件的发展，软件方面主要是自动微分技术(AD)。通常，自动微分技术AD用于训练过程中求损失函数$loss(\theta)$ 关于$\theta$的导数。如今，训练神经网络的方法基于梯度下降的思想。回想一下Taylor一阶展开，利用一阶导数，取一个小的步长，能够让目标函数值下降。
 
@@ -90,7 +102,7 @@ $$
 
 - **随机梯度下降法**
 
-以交叉熵计算损失函数为例,$loss=- \sum_{i=1}^n(y_i*\log_2 \hat{y_i} + (1-y_i)*\log_2(1-\hat{y_i}))$，其中n代表训练样本数量，训练集的数量很大，每次训练如果把所有样本都计算一遍的计算量太大了。
+以交叉熵计算损失函数为例, $loss=- \sum_{i=1}^n(y_i*\log_2 \hat{y_i} + (1-y_i)*\log_2(1-\hat{y_i}))$ ，其中n代表训练样本数量，训练集的数量很大，每次训练如果把所有样本都计算一遍的计算量太大了。
 
 优化思路：
 
@@ -98,7 +110,7 @@ $$
 2. 优化下降的路径，更少的步数更快地达到极值点
 
 随机梯度下降法：
-从期望的角度理解损失函数，$loss=\frac{- \sum_{i=1}^n(y_i*\log_2 \hat{y_i} + (1-y_i)*\log_2(1-\hat{y_i}))}{N}$。随机调一个数据，用这个数据计算梯度， 修改参数值，下次训练时，再随机挑一个数据....
+从期望的角度理解损失函数，$loss=\frac{- \sum_{i=1}^n(y_i*\log_2 \hat{y_i} + (1-y_i)*\log_2(1-\hat{y_i}))}{N}$ 。随机调一个数据，用这个数据计算梯度， 修改参数值，下次训练时，再随机挑一个数据....
 
 随机梯度下降法的收敛性： 凸问题: $f(x^{(k)})-f^*= O(\frac{1}{\sqrt k}),k代表迭代次数，f^*代表极值点$
 
@@ -137,7 +149,8 @@ mini-batch是现在的随机梯度下降法的别称，每次不止挑一个数�
 <img src="./Picture/grad4.png" width="80%">
 <img src="./Picture/grad5.png" width="80%">
 
-$V_{(t)}$是递归定义，$V_{(t)}$等于上一步的$V_{(t-1)}$+当前步的梯度$\Delta W_{(t)i} \ 它表示第t步，第i个变量W_i的梯度$。
+$V_{(t)} 是递归定义，V_{(t)}$ 等于上一步的 $V_{(t-1)}
++当前步的梯度, \Delta W_{(t)i} \ 它表示第t步，第i个变量W_i的梯度$。
 
 这种定义的一个问题是，如果步数够多，所有历史数据将一视同仁全部考虑。
 我们可以对V做一个 `指数加权移动平均法`，使得越近的历史数据权重越大，越远的数据权重越小(趋于0)。
@@ -218,13 +231,17 @@ AdaGrad(RMSprop)方法只考虑修正学习率，实际上可以把AdaGrad方法
 ## 2.1 PINNs思想与算法框架
 
 考虑如下带参数$\lambda$的PDE方程，对应的解为$u(\mathrm{x})$ with $\mathrm{x}=\left(x_{1}, \ldots, x_{d}\right)$ defined on a domain $\Omega \subset \mathbb{R}^{d}$ :
+
 $$
 f\left(\mathbf{x} ; \frac{\partial u}{\partial x_{1}}, \ldots, \frac{\partial u}{\partial x_{d}} ; \frac{\partial^{2} u}{\partial x_{1} \partial x_{1}}, \ldots, \frac{\partial^{2} u}{\partial x_{1} \partial x_{d}} ; \ldots ; \boldsymbol{\lambda}\right)=0, \quad \mathbf{x} \in \Omega,
 $$
+
 边界条件：
+
 $$
 \mathcal{B}(u, \mathrm{x})=0 \quad \text { on } \quad \partial \Omega,
 $$
+
 其中，$\mathcal{B}(u, \mathbf{x})$ 可以是狄利克雷，诺伊曼，罗宾，或者周期边界条件。对于时间依赖问题，我们认为时间$t$是$\mathbf{x}$的一个特殊分量，$\Omega$包含时间域。初始条件可以简单地看成是时空域上的一种特殊类型的狄利克雷边界条件。
 
 **PINNs的核心思想是**：
@@ -240,10 +257,13 @@ $$
 </center>
 
 PINNs的算法流程图如**Procedure** $2.1$所示，**Fig.1** 是使用PINNs求解扩散方程的示意图。
+
 $$
 \frac{\partial u}{\partial t}=\lambda \frac{\partial^{2} u}{\partial x^{2}}\\
 $$
+
 **With mixed boundary conditions:**
+
 $$
 u(x, t)=g_{D}(x, t) \quad on \  \Gamma_{D} \subset \partial \Omega \\
 \frac{\partial u}{\partial \mathbf{n}}(x, t)=g_{R}(u, x, t) 
@@ -259,17 +279,19 @@ $$
 **第二步**，我们需要通过约束神经网络$\hat{u}$以满足PDEs和边界条件。实际上，我们只是在求解区域内部分点上约束$\hat{u}$，例如：随机地取一些域内分散的点，training data $\mathcal{T}=\left\{\mathrm{x}_{1}, \mathrm{x}_{2}, \ldots, \mathrm{x}_{|\mathcal{T}|}\right\}$。除此之外，$\mathcal{T}$ 包含两个集合, $\mathcal{T}_{f} \subset \Omega$ and $\mathcal{T}_{b} \subset \partial \Omega$, 分别表示域内部的点和边界上的点。 我们将 $\mathcal{T}_{f}$ and $\mathcal{T}_{b}$ 称为残差点。
 
 **第三步**，为了测量神经网络$\hat{u}$与约束之间的差异，我们考虑损失函数定义为方程和边界条件残差$L^{2}$范数的和:
+
 $$
 \mathcal{L}(\boldsymbol{\theta} ; \mathcal{T})= \mathcal{L}_{f}\left(\boldsymbol{\theta} ; \mathcal{T}_{f}\right)+\mathcal{L}_{b}\left(\boldsymbol{\theta} ; \mathcal{T}_{b}\right)
 $$
+
 其中：
+
 $$
 \begin{aligned}
 \mathcal{L}_{f}\left(\boldsymbol{\theta} ; \mathcal{T}_{f}\right) &=\frac{1}{\left|\mathcal{T}_{f}\right|} \sum_{\mathbf{x} \in \mathcal{T}_{f}}\left\|f\left(\mathbf{x} ; \frac{\partial \hat{u}}{\partial x_{1}}, \ldots, \frac{\partial \hat{u}}{\partial x_{d}} ; \frac{\partial^{2} \hat{u}}{\partial x_{1} \partial x_{1}}, \ldots, \frac{\partial^{2} \hat{u}}{\partial x_{1} \partial x_{d}} ; \ldots ; \boldsymbol{\lambda}\right)\right\|_{2}^{2} \\
 \mathcal{L}_{b}\left(\boldsymbol{\theta} ; \mathcal{T}_{b}\right) &=\frac{1}{\left|\mathcal{T}_{b}\right|} \sum_{\mathbf{x} \in \mathcal{T}_{b}}\|\mathcal{B}(\hat{u}, \mathbf{x})\|_{2}^{2}
 \end{aligned}
 $$
-
 
 **最后一步**，我们最小化$\mathcal{L}(\boldsymbol{\theta} ; \mathcal{T})$，这一步在深度学习中被称为"训练/Training"。考虑到$\mathcal{L}(\boldsymbol{\theta} ; \mathcal{T})$是高度非线性以及非凸的，一般可采用Adam和L-BFGS这类梯度下降法。从实验经验来说，L-BFGS对于光滑函数的迭代次数比Adam迭代次数少，因为L-BFGS是拟牛顿方法，用到二阶导信息，而Adam只依赖于一阶导信息。但对于刚性解，L-BFGS可能收敛到一个局部bad solution。
 
@@ -280,10 +302,12 @@ $$
 
 
 下面给出PINNs求解Burges方程的算例，展现一下PINNs的威力。
+
 $$
 \frac{\partial u}{\partial t} + \frac{\partial u}{\partial x} - \mu \frac{\partial^{2} u}{\partial x^{2}} = 0, \ x \in [-1,1], \ t \in [0,1]\\
 u(−1, t) = u(1, t) = 0; u(x,0) = -\sin(\pi*x)
 $$
+
 取 $\mu = 0.01/\pi$，使用matlab求得数值解。
 
 - 网络结构为：
@@ -407,6 +431,7 @@ $$
 ​		self-adpative-weighted-cPINNs我称之为**自适应权重的cPINNs**。提出这一想法的原因是，在cPINNs训练过程中，交接处$I$将两个神经网络耦合在一起，而它们的loss之间可能存在的差距很大。想法是，训练过程中能偏向于loss较大的一方，提高训练效率。
 
 **自适应loss函数因子：**
+
 $$
 Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2} \\
 loss_{u1} := loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
@@ -432,6 +457,7 @@ $$
 原因是，如果两个神经网络之间没有联系时，那么我们对$Loss = \alpha_1 * loss_{u1} + \alpha_2 * loss_{u2}$求关于$\theta_{1}$的导数，$\frac{\partial loss}{\partial \theta_1} =\alpha_1 *  \frac{\partial loss_{u1}}{\partial \theta_1}$，可以发现与$\theta_2$无关，即跟第二个神经网络无关，只是在训练单个神经网络而已，而对单个神经网络的loss乘以一个数，实际是没有用的，相当于对优化问题中目标函数乘上一个常数，显然不影响我们寻找最优解。
 
 因此，此处的$loss_{u1},loss_{u2}$具体为：
+
 $$
 loss_{u1} := loss_{u1}^{bc} + loss_{u1}^{f} + loss_{u1}^{i} \\
 loss_{u2} := loss_{u2}^{bc} + loss_{u2}^{f} + loss_{u2}^{i} \\
@@ -557,9 +583,11 @@ $$
 ​		流体力学领域还存在各种各样的反问题，比如物理模型的初边值 条件是未知的，取而代之的是已知内部部分区域或部分物理量的数值真解，以此 反推整个区域的流体运动情况；或者，物理模型的方程本身具有一些未知参数， 需要通过真实的数值结果进行反推。这类问题在工程应用中具有很大意义，然而 各种传统方法对此类问题的求解具有一定的难度，在本文PINNs求解的框架 下，却很容易对该类反问题尝试进行求解。
 
 ​		下面我分别使用之前2d-parabolic耦合模型，讨论区域反问题和参数反问题。
+
 $$
 \begin{aligned}u_{i, t}-\nu_{i} \Delta u_{i} &=f_{i}, \quad \text { in } \Omega_{i}, &(1.1)\\-\nu_{i} \nabla u_{i} \cdot \hat{n}_{i} &=\kappa\left(u_{i}-u_{j}\right), \quad \text { on } I, \quad i, j=1,2, i \neq j, &(1.2)\\u_{i}(x, 0) &=u_{i}^{0}(x), \quad \text { in } \Omega_{i}, &(1.3)\\u_{i} &=g_{i}, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I . &(1.4)\end{aligned}
 $$
+
 Assume $\Omega_{1}=[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[-1,0]$, so $I$ is the portion of the $x$-axis from 0 to 1 . Then $\mathbf{n}_{1}=[0,-1]^{T}$ and $\mathbf{n}_{2}=[0,1]^{T}$. For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
 
 $$
@@ -785,28 +813,36 @@ $$
 D^{\mathrm{m}}:=\frac{\partial^{|\mathbf{m}|}}{\partial x_{1}^{m_{1}} \ldots \partial x_{d}^{m_{d}}} .
 $$
 
-We say $f \in C^{\mathbf{m}}\left(\mathbb{R}^{d}\right)$ if $D^{\mathbf{k}} f \in C\left(\mathbb{R}^{d}\right)$ for all $\mathbf{k} \leq \mathbf{m}, \mathrm{k} \in \mathbb{Z}_{+}^{d}$, where $C\left(\mathbb{R}^{d}\right)=\left\{f: \mathbb{R}^{d} \rightarrow\right.$ $\mathbb{R} \mid f$ is continuous $\}$ is the space of continuous functions. Then we recall the following theorem of derivative approximation using single hidden layer neural networks due to Pinkus [44].
+We say $f \in C^{\mathbf{m}}\left(\mathbb{R}^{d}\right)$ if $D^{\mathbf{k}} f \in C\left(\mathbb{R}^{d}\right)$ for all $\mathbf{k} \leq \mathbf{m}, \mathrm{k} \in \mathbb{Z}_{+}^{d}$,  where $C\left(\mathbb{R}^{d}\right)=\left\{f: \mathbb{R}^{d} \rightarrow\right.$ $\mathbb{R} \mid f$ is continuous $\}$ is the space of continuous functions. Then we recall the following theorem of derivative approximation using single hidden layer neural networks due to Pinkus [44].
 
  Let $\mathbf{m}^{i} \in \mathbb{Z}_{+}^{d}, i=1, \ldots, s$, and set $m=\max _{i=1, \ldots, s}\left|\mathbf{m}^{i}\right|$. Assume $\sigma \in C^{m}(\mathbb{R})$ and that $\sigma$ is not a polynomial. Then the space of single hidden layer neural nets
+
 $$
 \mathcal{M}(\sigma):=\operatorname{span}\left\{\sigma(\mathbf{w} \cdot \mathbf{x}+b): \mathbf{w} \in \mathbb{R}^{d}, b \in \mathbb{R}\right\}
 $$
+
 is dense in
+
 $$
 C^{\mathbf{m}^{1}, \ldots, \mathbf{m}^{s}}\left(\mathbb{R}^{d}\right):=\cap_{i=1}^{s} C^{\mathbf{m}^{i}}\left(\mathbb{R}^{d}\right),
 $$
+
 i.e., for any $f \in C^{\mathbf{m}^{1}, \ldots, \mathbf{m}^{s}}\left(\mathbb{R}^{d}\right)$, any compact $K \subset \mathbb{R}^{d}$, and any $\varepsilon>0$, there exists a $g \in \mathcal{M}(\sigma)$ satisfying
+
 $$
 \max _{\mathbf{x} \in K}\left|D^{\mathbf{k}} f(\mathbf{x})-D^{\mathbf{k}} g(\mathbf{x})\right|<\varepsilon
 $$
+
 for all $\mathbf{k} \in \mathbb{Z}_{+}^{d}$ for which $\mathbf{k} \leq \mathbf{m}^{i}$ for some $i$.
 
 上述定理表明当我们的神经网络拥有足够多的神经元后，它可以一致逼近任何函数和其偏导数。然后在实际应用中，神经元个数总是有限的。令$\mathcal{F}$ 表示我们的神经网络能表示的函数族，一般来说PDEs的解$u$不太可能属于$\mathcal{F}$，定义$u_{\mathcal{F}}=\arg \min _{f \in \mathcal{F}}\|f-u\|$ ，作为$u$的“最佳逼近“神经网络。而由于我们只在训练集$\mathcal{T}$上训练我们的神经网络，定义$u_{\mathcal{T}}=\arg \min _{f \in \mathcal{F}} \mathcal{L}(f ; \mathcal{T})$为loss最小的神经网络。为了简单起见，假设$u,u_{\mathcal{F}},u_{\mathcal{T}}$都存在且唯一。通过最小化loss寻找$u_\mathcal{T}$往往需要很复杂的计算，我们的优化器返回一个近似解$\hat{u}_\mathcal{T}$。
 
 至此，我们可以拆解the total error $\mathcal{E}$:
+
 $$
 \mathcal{E}:=\left\|\tilde{u}_{\mathcal{T}}-u\right\| \leq \underbrace{\left\|\tilde{u}_{\mathcal{T}}-u_{\mathcal{T}}\right\|}_{\mathcal{E}_{\text {opt }}}+\underbrace{\left\|u_{\mathcal{T}}-u_{\mathcal{F}}\right\|}_{\mathcal{E}_{\mathrm{gen}}}+\underbrace{\left\|u_{\mathcal{F}}-u\right\|}_{\mathcal{E}_{\text {app }}} .
 $$
+
 逼近误差$\mathcal{E}_{\text {app }}$ 表示$u$和$u_\mathcal{F}$的接近程度。而泛化误差$\mathcal{E}_{\text {gen }}$取决于残差点的数量和位置 以及 函数族$\mathcal{F}$的表示能力。
 
 更大的神经网络拥有更小的逼近误差，然而可能导致泛化误差增大，这种现象被称为bias-variance tradeoff。
