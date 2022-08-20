@@ -1,4 +1,4 @@
-# 耦合PINN、正反问题、3D问题的学习研究
+# 耦合PINN、正反问题、3D问题的研究日记
 
 # 06-29
 
@@ -63,7 +63,7 @@ def createModel(layer):
 
 # 06-30
 
-### `<font color='blue'>`1.PINN模型搭建（续）`</font>`
+### <font color='blue'> 1.PINN模型搭建（续）</font>
 
 TensorFlow为我们提供了多种多样的高阶API帮助我们快速搭建模型。**但是，快速方便的代价就是灵活性降低。**特别是PINN跟一般的机器学习模型训练步骤不同，主要来源于loss function需要对预测值进行求导运算。
 
@@ -138,7 +138,7 @@ loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 
 **因为我们有不同格式的训练数据（带标签和不带标签）、复杂的loss函数（不仅仅需要y，y_pred，还需要y_pred对x，t的导数），所以在这种情况下，仍然使用fit（）代码框架，需要大刀阔斧地修改。还不如自己写训练过程，不去使用所谓的高阶API~~**
 
-### `<font color='blue'>`2.子类化Sequential() / Model() , 定义 MyPinn，自定义训练过程 `</font>`
+### <font color='blue'>2.子类化Sequential() / Model() , 定义 MyPinn，自定义训练过程</font>
 
 之前讨论过**步骤1：使用Sequential搭建模型** 是没有问题的，我们需要做的仅仅是重新定义**训练过程**。
 
@@ -230,7 +230,7 @@ class MyPinn(keras.Sequential): ## 以Burgers_Equation为例
 
 # 07-01
 
-### `<font color='blue'>`优化器 `</font>`
+### <font color='blue'> 优化器</font>
 
 tf.keras.optimizers为我们提供了许多现成的优化器，比如SGD（最速下降）、Adam、RMSprop等等。
 
@@ -257,7 +257,7 @@ tf.keras.optimizers.Optimizer()主要提供了两种Methods，为我们的参数
 
 **为了精准地控制优化过程，并在优化过程中加上一些别的操作，我们使用 第1种方法 对参数进行优化。**
 
-### `<font color='blue'>  Adam & L-BFGS </font>`
+### <font color='blue'>  Adam & L-BFGS </font>
 
 Adam优化器在deep neural network中具有广泛的应用。之前也说过，tf.keras.optimizers里内置了Adam优化器，我们直接调用就好。
 
@@ -622,9 +622,9 @@ ANN: artificial neural network
 
 ## **与2位学长会议交流，讨论PINN**
 
-解决了不少疑问，PINN在边界处的拟合效果确实一般。
+与郑老师的两位研究生以及学弟进行1个多小时的PINN讨论交流，解决了不少疑问。
 
-`<img src = './Data/会议.png'>`
+<img src = './Data/会议.png'>`
 
 ---
 
@@ -1754,7 +1754,7 @@ AdaGrad(RMSprop)方法只考虑修正学习率，实际上可以把AdaGrad方法
 
 ---
 
-# 08-08
+# 08-08 3D_Parabolic正问题
 
 写代码3D_parabolic正问题。训练神经网络。
 
@@ -1762,7 +1762,7 @@ AdaGrad(RMSprop)方法只考虑修正学习率，实际上可以把AdaGrad方法
 
 写代码3D_parabolic反问题 + 写cPINNs报告
 
-# 08-15
+# 08-15 Mathematical and Scientific Machine Learning
 
 观看 学术会议Mathematical and Scientific Machine Learning
 
@@ -1772,7 +1772,7 @@ MSML2022于2022年8月15至17日在线上举行，本届会议由北京大学数
 
 ---
 
-# 08-17
+# 08-17 3D_Parabolic参数反问题
 
 编写3D_Parabolic参数反问题代码，主要是调试，跑模型用一天，逆天。
 

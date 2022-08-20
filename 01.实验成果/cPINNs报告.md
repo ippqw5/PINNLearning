@@ -3,11 +3,19 @@
 [toc]
 
 ## 引言
-​	本文是我在暑期研究PINNs求解耦合PDEs的研究报告。**在Section1中**，我将从数学的角度描述神经网络，什么是深度学习，以及用数学的语言描述机器学习中的概念，包括神经元、层、权重和偏置、loss、优化器、训练等概念。**在Section2.1中**，我将介绍PINNs(Physcis-Informed Neural Networks)的核心思想：如何使用神经网络求解PDEs，以及PINNs的算法框架，并给出PINNs求解Burgers方程的算例来体现PINNs的威力。**在Section2.2中**，我将介绍cPINNs(c : coupled)，即求解耦合问题的PDEs的PINNs模型，我将给出c-PINNs模型结构和求解算法.**在Section2.3中**，我将使用cPINNs求解两个耦合PDEs模型。首先，使用cPINNs求解一个具有解析解的2D-parabolic耦合PDEs模型 。之后，给出一种自适应权重的cPINNs(self-adaptive-weighted-cPINNs)，以一个具有解析解的3D-parabolic耦合PDEs模型为例，对比cPINNs与self-adaptive-weighted-cPINNs，同时展现PINNs处理不同维数PDEs问题的一致性。**在Section3中**，介绍PINNs求解反问题，对于PINNs来说，正问题与反问题的求解几乎是一样的，只需略微修改核心代码，就可以将PINNs应用于各类反问题的求解，并给出上述2D/3D-parabolic耦合PDEs模型的**区域反问题和参数反问题**算例。**在Section4中**，我将会讨论PINNs的收敛性问题、逼近理论。**在Section5中**，我会给出若干种PINNs的优化方案。在本文最后，我介绍一下几个现有的PINNs求解器。
+​	本文是我在暑期研究PINNs求解耦合PDEs的研究报告。**在Section1中**，我将从数学的角度描述神经网络，什么是深度学习，以及用数学的语言描述机器学习中的概念，包括神经元、层、权重和偏置、loss、优化器、训练等概念。
+
+​	**在Section2.1中**，我将介绍PINNs(Physcis-Informed Neural Networks)的核心思想：如何使用神经网络求解PDEs，以及PINNs的算法框架，并给出PINNs求解Burgers方程的算例来体现PINNs的威力。**在Section2.2中**，我将介绍cPINNs(c : coupled)，即求解耦合问题的PDEs的PINNs模型，我将给出c-PINNs模型结构和求解算法.**在Section2.3中**，我将使用cPINNs求解两个耦合PDEs模型。首先，使用cPINNs求解一个具有解析解的2D-parabolic耦合PDEs模型 。之后，给出一种自适应权重的cPINNs(self-adaptive-weighted-cPINNs)，以一个具有解析解的3D-parabolic耦合PDEs模型为例，对比cPINNs与self-adaptive-weighted-cPINNs，同时展现PINNs处理不同维数PDEs问题的一致性。**在Section2.4中**，对于coupled viscous Burgers’ equation，我给出2个带解析解的算例和1个无解析解的算例。
+
+​	**在Section3中**，介绍PINNs求解反问题，对于PINNs来说，正问题与反问题的求解几乎是一样的，只需略微修改核心代码，就可以将PINNs应用于各类反问题的求解，并给出上述2D/3D-parabolic耦合PDEs模型的**区域反问题和参数反问题**算例。
+
+​	**在Section4中**，我将会讨论PINNs的收敛性问题、逼近理论。
+
+**	在Section5中**，我会给出若干种PINNs的优化方案。在本文最后，我介绍一下几个现有的PINNs求解器。
 
 ​	PINNs的理论部分并不困难，我在暑假对PINNs的研究也更倾向于实验写代码。我在之前完全没有接触过机器学习，我从零开始学习Tensorflow(Python第三方库，一款机器学习框架)，PINNs原作者使用的是Tensorflow1.0版本编写的PINNs代码，如今来到Tensorflow2.0时代，代码风格大变，夸张点说是完全改变。我自学了Tensorflow2.0，从零构建PINNs的代码。
 
-所有的代码以及学习过程的记录，均可在我的github上看到https://github.com/ippqw5/PINNLearning.
+​	所有的代码以及学习过程的记录，均可在我的github上看到https://github.com/ippqw5/PINNLearning.
 
 ---
 
@@ -576,7 +584,135 @@ $$
 
   $ Test Error For u2:  0.03079$
 
+---
 
+## 2.4 Coupled viscous Burgers’ equation
+
+> [Numerical solution of the coupled viscous Burgers’ equation---R.C. Mittal, Geeta Arora]()
+
+**这篇文章给出了一种数值方法求解Coupled viscous Burgers’ equation的三个算例，我将使用PINN进行对比。**
+
+---
+
+Coupled viscous Burgers' equation 是由Esipov提出，用于研究polydispersive sedimentation的模型。该耦合粘性Burgers方程组是一个简单的方程组，描述了重力作用下两种颗粒在流体悬浮液中比例体积浓度的沉降或演化模型。Coupled viscous Burgers‘ equation 如下：
+$$
+\begin{aligned}
+u_t - u_{xx} + \eta uu_x+ \alpha(uv)_x = 0, \ x \in [a,b], t \in [0,T]	 \\
+v_t - v_{xx} + \eta uu_x+ \beta(uv)_x = 0, \ x \in [a,b], t \in [0,T]	 \\
+\end{aligned}
+$$
+初值条件为：	$u(x,0) = \phi_1(x), v(x,0)=\phi_2(x)$
+
+边值条件为：	$u(a,t)=f_1(a,t),u(b,t)=f_2(b,t)$
+
+​							$v(a,t) = g_1(a,t),v(b,t)=g_2(b,t)$
+
+其中$\eta$是实常数，$\alpha,\beta$是依赖于系统的任意常数，比如Peclet number、由重力和布朗扩散引起的Stokes粒子速率
+
+---
+
+### 算例1-有解析解
+
+![image-20220821014918923](Picture/image-20220821014918923.png)
+
+- **传统数值方法配置和求解结果**
+
+![image-20220821015046947](Picture/image-20220821015046947.png)
+
+- **PINN模型配置和求解结果**
+
+  - 网络结构：Layers=[2,40,40,40,40,1]
+
+  - 训练集  $|\mathcal{T}_f^{NN_1}|=|\mathcal{T}_f^{NN_2}|=2000,|\mathcal{T}_b^{NN_1}|=|\mathcal{T}_b^{NN_1}|=600$.
+
+  - 训练策略：
+
+    1. Adam训练500次
+    2. L-BFGS训练1000次
+
+  - 训练结果：
+
+    L2:	err_u1=6.2722e-04 ，err_u2= 5.2188e-04
+
+<center>
+    <img src="./Picture/2d_cBurgers_eg1.png">,
+    <img src="./Picture/2d_cBurgers_eg1_surface_real.png">,
+    <img src="./Picture/2d_cBurgers_eg1_surface_pred.png">
+</center>
+
+---
+
+### 算例2-有解析解
+
+![image-20220821020300464](Picture/image-20220821020300464.png)
+
+- **传统数值方法配置和求解结果**
+
+![image-20220821020429813](Picture/image-20220821020429813.png)
+
+- **PINN模型配置和求解结果**
+
+  - **只做$\alpha=0.1,\beta=0.3$**
+
+    - 网络结构：Layers=[2,40,40,40,40,1]
+
+    - 训练集  $|\mathcal{T}_f^{NN_1}|=|\mathcal{T}_f^{NN_2}|=2000,|\mathcal{T}_b^{NN_1}|=|\mathcal{T}_b^{NN_1}|=600$.
+
+    - 训练策略：
+
+      1. Adam训练500次
+      2. L-BFGS训练1000次
+
+    - 训练结果：
+
+        L2:	err_u1: 0.0015 ， err_u2: 0.0030
+
+<center>
+    <img src="./Picture/2d_cBurgers_eg2.png">,
+    <img src="./Picture/2d_cBurgers_eg2_surface_real.png">,
+    <img src="./Picture/2d_cBurgers_eg2_surface_pred.png">
+</center>
+
+---
+
+### 算例3-无解析解
+
+![image-20220821021224243](Picture/image-20220821021224243.png)
+
+该算例无解析解，作者将partitions=400的数值解作看做解析解，计算L2等指标，以及计算了不同partition下，函数在t=0.1,..下的最大值。由于论文没给代码，作者也没给出partitions=400的数值。所以我没法算L2。
+
+- **传统数值方法配置和求解结果**
+
+  ![image-20220821021644663](Picture/image-20220821021644663.png)
+
+  ![image-20220821021705253](Picture/image-20220821021705253.png)
+
+  ![image-20220821021749647](Picture/image-20220821021749647.png)
+
+- **PINN模型配置和求解结果**
+
+  - 网络结构：Layers=[2,40,40,40,40,40,40,40,40,1]
+
+  - 训练集  $|\mathcal{T}_f^{NN_1}|=|\mathcal{T}_f^{NN_2}|=8000,|\mathcal{T}_b^{NN_1}|=|\mathcal{T}_b^{NN_1}|=1200$.
+
+  - 训练策略：
+
+    1. Adam训练1000次
+    2. L-BFGS训练4000次
+
+  - 训练结果：
+
+    t = 0.1, Max value of u1: 0.1437306285792562, At point: 0.5814166933026186 
+
+    t = 0.1, Max value of u2: 0.1433007282287982, At point: 0.6515883621941744
+
+    对比一下Table6的结果，还是很接近的。
+
+<center>
+    <img src="./Picture/2d_cBurgers_eg3_surface_pred.png">
+</center>
+
+---
 
 # 3.PINNs求解反问题
 
@@ -585,7 +721,9 @@ $$
 ​		下面我分别使用之前2d-parabolic耦合模型，讨论区域反问题和参数反问题。
 
 $$
-\begin{aligned}u_{i, t}-\nu_{i} \Delta u_{i} &=f_{i}, \quad \text { in } \Omega_{i}, &(1.1)\\-\nu_{i} \nabla u_{i} \cdot \hat{n}_{i} &=\kappa\left(u_{i}-u_{j}\right), \quad \text { on } I, \quad i, j=1,2, i \neq j, &(1.2)\\u_{i}(x, 0) &=u_{i}^{0}(x), \quad \text { in } \Omega_{i}, &(1.3)\\u_{i} &=g_{i}, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I . &(1.4)\end{aligned}
+\begin{aligned}
+u_{i, t}-\nu_{i} \Delta u_{i} &=f_{i}, \quad \text { in } \Omega_{i}, &(1.1)\\-\nu_{i} \nabla u_{i} \cdot \hat{n}_{i} &=\kappa\left(u_{i}-u_{j}\right), \quad \text { on } I, \quad i, j=1,2, i \neq j, &(1.2)\\u_{i}(x, 0) &=u_{i}^{0}(x), \quad \text { in } \Omega_{i}, &(1.3)\\u_{i} &=g_{i}, \quad \text { on } \Gamma_{i}=\partial \Omega_{i} \backslash I . &(1.4)
+\end{aligned}
 $$
 
 Assume $\Omega_{1}=[0,1] \times[0,1]$ and $\Omega_{2}=[0,1] \times[-1,0]$, so $I$ is the portion of the $x$-axis from 0 to 1 . Then $\mathbf{n}_{1}=[0,-1]^{T}$ and $\mathbf{n}_{2}=[0,1]^{T}$. For $a, \nu_{1}, \nu_{2}$, and $\kappa$ all arbitrary positive constants, the right hand side function $\mathbf{f}$ is chosen to ensure that
