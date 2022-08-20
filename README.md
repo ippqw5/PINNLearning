@@ -16,6 +16,7 @@
 
 | 日期            | 学习内容                                                     | 备注                                                         |
 | --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 8.20-8.21       | Coupled viscous Burgers‘ equation                            | 三个数值算例：两个带解析解，一个无解析解。<br />实验成果/cBurgers_eg1.ipynb,<br />实验成果/cBurgers_eg2.ipynb,<br />实验成果/cBurgers_eg3.ipynb,<br />更新cPINNs报告.md |
 | 8.17            | 3D_Parabolic参数反问题                                       | 实验成果/3D_Parabolic区域反问题.ipynb                        |
 | 8.15            | 3D_Parabolic区域反问题                                       | 实验成果/3D_Parabolic区域反问题.ipynb                        |
 | 8.13-14         | cPINNs报告                                                   | 实验成果/cPINNs报告.md                                       |
