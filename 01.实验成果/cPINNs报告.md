@@ -1,4 +1,6 @@
-# cPINNs报告——by 钱骋
+# 2022暑期科研实习报告 - 钱骋
+
+研究主题：Coupled-Physcis-Informed Neural Networks, 指导老师: 郑海标 副教授 
 
 [toc]
 
@@ -9,11 +11,11 @@
 
 ​	**在Section3中**，介绍PINNs求解反问题，对于PINNs来说，正问题与反问题的求解几乎是一样的，只需略微修改核心代码，就可以将PINNs应用于各类反问题的求解，并给出上述2D/3D-parabolic耦合PDEs模型的**区域反问题和参数反问题**算例。
 
-​	**在Section4中**，我将会讨论PINNs的收敛性问题、逼近理论。
+**在Section4中**，我将会讨论PINNs的收敛性问题、逼近理论。
 
-**	在Section5中**，我会给出若干种PINNs的优化方案。在本文最后，我介绍一下几个现有的PINNs求解器。
+**在Section5中**，我会给出若干种PINNs的优化方案。在本文最后，我介绍一下几个现有的PINNs求解器。
 
-​	PINNs的理论部分并不困难，我在暑假对PINNs的研究也更倾向于实验写代码。我在之前完全没有接触过机器学习，我从零开始学习Tensorflow(Python第三方库，一款机器学习框架)，PINNs原作者使用的是Tensorflow1.0版本编写的PINNs代码，如今来到Tensorflow2.0时代，代码风格大变，夸张点说是完全改变。我自学了Tensorflow2.0，从零构建PINNs的代码。
+​	PINNs的理论思想并不困难，我在暑假对PINNs的研究也更倾向于实验写代码。我在之前完全没有接触过机器学习，我从零开始学习Tensorflow(Python第三方库，一款机器学习框架)，PINNs原作者使用的是Tensorflow1.0版本编写的PINNs代码，如今来到Tensorflow2.0时代，代码风格大变，夸张点说是完全改变。我自学了Tensorflow2.0，从零构建PINNs的代码。
 
 ​	所有的代码以及学习过程的记录，均可在我的github上看到https://github.com/ippqw5/PINNLearning.
 
@@ -270,12 +272,10 @@ $$
 \frac{\partial u}{\partial t}=\lambda \frac{\partial^{2} u}{\partial x^{2}}\\
 $$
 
-**With mixed boundary conditions:**
-
 $$
 u(x, t)=g_{D}(x, t) \quad on \  \Gamma_{D} \subset \partial \Omega \\
 \frac{\partial u}{\partial \mathbf{n}}(x, t)=g_{R}(u, x, t) 
-\quad on  \ \Gamma_{R} \subset \partial \Omega.
+\quad on  \ \Gamma_{R} \subset \partial \Omega
 $$
 
 ---
@@ -287,7 +287,6 @@ $$
 **第二步**，我们需要通过约束神经网络$\hat{u}$以满足PDEs和边界条件。实际上，我们只是在求解区域内部分点上约束$\hat{u}$，例如：随机地取一些域内分散的点，training data $\mathcal{T}=\left\{\mathrm{x}_{1}, \mathrm{x}_{2}, \ldots, \mathrm{x}_{|\mathcal{T}|}\right\}$。除此之外，$\mathcal{T}$ 包含两个集合, $\mathcal{T}_{f} \subset \Omega$ and $\mathcal{T}_{b} \subset \partial \Omega$, 分别表示域内部的点和边界上的点。 我们将 $\mathcal{T}_{f}$ and $\mathcal{T}_{b}$ 称为残差点。
 
 **第三步**，为了测量神经网络$\hat{u}$与约束之间的差异，我们考虑损失函数定义为方程和边界条件残差$L^{2}$范数的和:
-
 $$
 \mathcal{L}(\boldsymbol{\theta} ; \mathcal{T})= \mathcal{L}_{f}\left(\boldsymbol{\theta} ; \mathcal{T}_{f}\right)+\mathcal{L}_{b}\left(\boldsymbol{\theta} ; \mathcal{T}_{b}\right)
 $$
@@ -305,7 +304,13 @@ $$
 
 ---
 
-​		在实际操作过程中，往往边界条件不容易满足。上述的PINNs算法将边值条件通过$\mathcal{L}(\boldsymbol{\theta} ; \mathcal{T})$进行“软约束”，这对于任何的初边值条件都是适用的。但对于一些简单的情况，我们可以修改解的结构。例如：当边界条件是$u(0)=u(1)=0 \ with\  \Omega  = [0,1]$, 我们可以简单地令近似解为 $\hat{u}(x) =x(x - 1)NN(x) $，这样可以自动地满足边界条件，其中$NN(x)$是一个神经网络。
+​		在实际操作过程中，往往边界条件不容易满足。上述的PINNs算法将边值条件通过$\mathcal{L}(\boldsymbol{\theta} ; \mathcal{T})$进行“软约束”，这对于任何的初边值条件都是适用的。但对于一些简单的情况，我们可以修改解的结构。
+
+例如：当边界条件是$u(0)=u(1)=0 \ with\  \Omega  = [0,1]$, 
+
+我们可以简单地令近似解为 $\hat{u}(x) =x(x - 1)NN(x) $，
+
+这样可以自动地满足边界条件，其中$NN(x)$是一个神经网络。
 
 
 
@@ -342,14 +347,13 @@ $$
 
 ## 2.2 cPINNs
 
-​		耦合PDEs通常指多区域多物理模型，这些物理模型中的量在交接处相互影响，并在交界处有特定的PDE。例如石油勘探与开采中，涉及到与空腔、多孔岩层、地下水耦合等复杂情况，需要建立能够描述这些耦合现象的模型；农业灌溉工程中会涉及到水流与泥土的耦合作用；研究药物在血液中的动力学也会涉及到血液与生物组织之间的耦合交互，这可以抽象为自由流动的血液与多孔介质组织的耦合模型。
+​		耦合PDEs通常指多区域多物理模型，这些物理模型中的量在交接处相互影响，并在交界处有特定的PDE。例如石油勘探与开采中，涉及到与空腔、多孔岩层、地下水耦合等复杂情况，需要建立能够描述这些耦合现象的模型；农业灌溉工程中会涉及到水流与泥土的耦合作用。
 
 cPINNs(coupled-PINNs)是用于求解耦合PDEs方程组的PINNs模型，在单个PINNs的基础上进行了扩展。
 
 下面以2D-parabolic耦合PDE方程组为例，描述cPINNs的结构和算法。
 
-​		In this work, a simplified model of diffusion through two adjacent materials which are coupled across their shared and rigid interface $I$ through a jump condition is considered. This problem captures some of the time-stepping difficulties of the ocean-atmosphere problem described in 1.2. The domain consists of two subdomains $\Omega_{1}$ and $\Omega_{2}$ coupled across an interface $I$ (example in Figure $1.1$ below). The problem is: given $\nu_{i}>0, f_{i}:[0, T] \rightarrow H^{1}\left(\Omega_{i}\right), u_{i}(0) \in$ $H^{1}\left(\Omega_{i}\right)$ and $\kappa \in \mathbb{R}$, find (for $\left.i=1,2\right) u_{i}: \bar{\Omega}_{i} \times[0, T] \rightarrow \mathbb{R}$ satisfying
-
+​		In this work, a simplified model of diffusion through two adjacent materials which are coupled across their shared and rigid interface $I$ through a jump condition is considered. . The domain consists of two subdomains $\Omega_{1}$ and $\Omega_{2}$ coupled across an interface $I$ (example in Figure $1.1$ below). The problem is: given $\nu_{i}>0, f_{i}:[0, T] \rightarrow H^{1}\left(\Omega_{i}\right), u_{i}(0) \in$ $H^{1}\left(\Omega_{i}\right)$ and $\kappa \in \mathbb{R}$, find (for$\left.i=1,2\right) u_{i}: \bar{\Omega}_{i} \times[0, T] \rightarrow \mathbb{R}$ satisfying
 $$
 \begin{aligned}
 u_{i, t}-\nu_{i} \Delta u_{i} &=f_{i}, \quad \text { in } \Omega_{i}, &(1.1)\\
@@ -454,7 +458,7 @@ $$
 
 如果使用**“正梯度”**去改变$\alpha_1,\alpha_2$，能够使得$loss_{ui}$对应的$\alpha_{i}$更大。
 
-实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。例如：$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$,
+实际上，使用这种策略，不断地训练会使得$\alpha$一直增大，同时为了控制$\alpha$的值，可以套一层sigmoid函数，使得$\alpha$控制在0-1之间。例如：$初始化\alpha=0，\alpha=tf.math.sigmoid(\alpha)$。
 
 #### 加权策略
 
@@ -931,7 +935,7 @@ $$
 
 # 4. 收敛性
 
-​		与传统数值方法不同，PINNs对解的唯一性没有保证，因为PINNs的解是通过解决非凸优化问题，这通常来说是没有唯一解的。在实践中，我们需要调参，e.g. 网络结构和规模大小，学习率，残差点的数量等等。通常，网络规模大小取决于PDEs解的光滑性。例如，一个小型的网络(只有几个层，每层神经元数量也不多)就足以求解1-D的Poisson方程。而对于1D的Burgers方程，我们就需要更多的层(deeper)和神经元个数(wider)。
+​		与传统数值方法不同，PINNs对解的唯一性没有保证，因为PINNs的解是通过解决非凸优化问题，这通常来说是没有唯一解的。在实践中，我们需要调超参数，e.g. 网络结构和规模大小，学习率，残差点的数量等等。通常，网络规模大小取决于PDEs解的光滑性。例如，一个小型的网络(只有几个层，每层神经元数量也不多)就足以求解1-D的Poisson方程。而对于1D的Burgers方程，我们就需要更多的层(deeper)和神经元个数(wider)。
 
 ## 逼近理论与误差分析
 
@@ -943,15 +947,11 @@ $$
 D^{\mathrm{m}}:=\frac{\partial^{|\mathbf{m}|}}{\partial x_{1}^{m_{1}} \ldots \partial x_{d}^{m_{d}}} .
 $$
 
-$f \in C^{\mathbf{m}}\left(\mathbb{R}^{d}\right)$ if $D^{\mathbf{k}} f \in C\left(\mathbb{R}^{d}\right)$ for all $\mathbf{k} \leq \mathbf{m}, \mathrm{k} \in \mathbb{Z}_{+}^{d}$, where $C\left(\mathbb{R}^{d}\right)=\left\{f: \mathbb{R}^{d} \rightarrow\right.$ $\mathbb{R} \mid f$ is continuous $\}$ .
 
-Pinkus给出了如下的单隐藏层神经网络的逼近定理：
-
-$$
-D^{\mathrm{m}}:=\frac{\partial^{|\mathbf{m}|}}{\partial x_{1}^{m_{1}} \ldots \partial x_{d}^{m_{d}}} .
-$$
 
 We say $f \in C^{\mathbf{m}}\left(\mathbb{R}^{d}\right)$ if $D^{\mathbf{k}} f \in C\left(\mathbb{R}^{d}\right)$ for all $\mathbf{k} \leq \mathbf{m}, \mathrm{k} \in \mathbb{Z}_{+}^{d}$,  where $C \left(\mathbb{R}^{d} \right)=\left \{f: \mathbb{R}^{d} \rightarrow \right.$  $\mathbb{R} \mid f$ is continuous $\}$ is the space of continuous functions. Then we recall the following theorem of derivative approximation using single hidden layer neural networks due to Pinkus [44].
+
+Pinkus给出了如下的单隐藏层神经网络的逼近定理：
 
  Let $\mathbf{m}^{i} \in \mathbb{Z}_{+}^{d}, i=1, \ldots, s$, and set $m=\max _{i=1, \ldots, s} |\mathbf{m}^{i}|$ . Assume $\sigma \in C^{m}(\mathbb{R})$ and that $\sigma$ is not a polynomial. Then the space of single hidden layer neural nets
 
